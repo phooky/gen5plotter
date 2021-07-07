@@ -1,0 +1,24 @@
+#ifndef __STEPPER_PINS_HP__
+#define __STEPPER_PINS_HP__
+
+// Configuration of outputs for birdwing
+// All outputs are on PRU 0 r30.
+
+#define X_STEP      23
+#define X_DIR       22
+#define X_ENABLE    24
+#define X_VREF      25
+    //DA850_GPIO0_13,	//x load
+
+#define Y_STEP      20
+#define Y_DIR       19
+#define Y_ENABLE    17
+#define Y_VREF      16
+    //DA850_GPIO0_12,	//y load
+
+#define Z_STEP      21
+#define Z_DIR       5
+#define Z_ENABLE    4
+    //DA850_GPIO2_4,	//z load
+
+#endif // __STEPPER_PINS_HP__
