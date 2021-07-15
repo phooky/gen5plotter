@@ -9,13 +9,6 @@
 
 #define PRU0_ARM_INTERRUPT  34
 
-.macro delay
-    MOV     r21, r20
-DELAY_LOOP:
-    SUB     r21, r21, 1
-    QBNE    DELAY_LOOP, r21, 0
-.endm
-
 // Not used at present
 .macro clr_ccnt
     LBBO    &r0, r20, 0, 4
@@ -26,35 +19,55 @@ DELAY_LOOP:
     SBBO    &r0, r20, 0, 4
 .endm
 
+#define TIME r18
+#define REG_BASE r17
+
+#define STEPS r5
+#define X_NEXT_TICK r6
+#define X_TICK_PERIOD r7
+#define X_MASK r8
+
+.macro reset_time
+    LBBO    &r0, REG_BASE, 0, 4
+    CLR     r0, r0, 3
+    SBBO    &r0, REG_BASE, 0, 4
+    XOR     r1, r1, r1
+    SBBO    &r1, REG_BASE, 0xc, 4
+    SET     r0, r0, 3
+    SBBO    &r0, REG_BASE, 0, 4
+.endm
+
+.macro get_time
+    LBBO    &TIME, REG_BASE, 0xC, 4
+.endm
+
 START:
-    LDI     r20.b0, 16960
-    LDI     r20.b2, 1
-    LDI     r5, 8000 // 200 iterations
-// Turn on enable
-// dir pos
+    LDI     REG_BASE, 0x7000
+    LDI     STEPS, 8000 // start with 8000 steps
+    reset_time
+    // about 1kHz
+    LDI     X_TICK_PERIOD.w2, 3
+    LDI     X_TICK_PERIOD.w0, 3392
+    MOV     X_MASK, 1
+    LSL     X_MASK, X_MASK, X_STEP
+    MOV     X_NEXT_TICK, X_TICK_PERIOD
+
+    // Positive direction
     SET     r30, r30, X_DIR
+    // Enable X stepper
     CLR     r30, r30, X_ENABLE
-    SET     r30, r30, X_STEP
 STEP_LOOP:
-    // step high
-    SET     r30, r30, X_STEP
-    MOV     r21, 0x3fff
-D1:
-    SUB     r21, r21, 1
-    QBNE    D1, r21, 0
-    // step low
-    CLR     r30, r30, X_STEP
-    MOV     r21, 0x3fff
-D2:
-    SUB     r21, r21, 1
-    QBNE    D2, r21, 0
-    SUB     r5, r5, 1
-    QBNE    STEP_LOOP, r5, 0
+    get_time
+    QBGT    STEP_LOOP, TIME, X_NEXT_TICK
+    XOR     r30, r30, X_MASK
+    ADD     X_NEXT_TICK, X_NEXT_TICK, X_TICK_PERIOD
+    SUB     STEPS, STEPS, 1
+    QBNE    STEP_LOOP, STEPS, 0
 // Turn off enable
     SET     r30, r30, X_ENABLE
     SET     r30, r30, Y_ENABLE
     SET     r30, r30, Z_ENABLE
 DONE:
-    // Let the host know we're done
+    // Let the host know we are done
     MOV R31.b0, #PRU0_ARM_INTERRUPT
     HALT

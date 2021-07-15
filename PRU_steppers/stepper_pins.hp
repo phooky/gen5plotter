@@ -4,6 +4,12 @@
 // Configuration of outputs for birdwing
 // All outputs are on PRU 0 r30.
 
+
+// Pin assignments come from birdwing linux kernel checked into Makerbot github.
+// All ENABLE pins are enable low.
+// I don't know what the VREF or load pins are for yet; I'm going to guess that
+// the load pins are used for homing and the vref is for torque (will have to measure).
+
 #define X_STEP      23
 #define X_DIR       22
 #define X_ENABLE    24
