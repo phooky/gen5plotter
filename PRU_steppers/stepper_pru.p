@@ -1,6 +1,29 @@
 //
-// Poking around with PRU code
+// It is 2021 and I am writing PRU code to drive steppers. Again.
+// This is like, what, the third time now?
 //
+
+// 
+// Axis structure. Mask is static at start time,
+// other fields are updated per-command.
+//
+.struct Axis
+    .u32 period
+    .u32 next_tick
+    .u32 mask
+.ends
+
+//
+// Command structure.
+//
+.struct Command
+    .u32 x_period
+    .u32 y_period
+    .u32 z_period
+    .u32 end_tick
+    .u8  direction
+    .u8  enable
+.ends
 
 .origin 0
 .entrypoint START
