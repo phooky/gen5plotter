@@ -45,15 +45,15 @@ START:
     LDI     REG_BASE, 0x7000
     LDI     STEPS, 8000 // start with 8000 steps
     reset_time
-    // about 1kHz
-    LDI     X_TICK_PERIOD.w2, 3
-    LDI     X_TICK_PERIOD.w0, 3392
+    // about 8kHz
+    LDI     X_TICK_PERIOD.w2, 0
+    LDI     X_TICK_PERIOD.w0, 10000
     MOV     X_MASK, 1
     LSL     X_MASK, X_MASK, X_STEP
     MOV     X_NEXT_TICK, X_TICK_PERIOD
 
     // Positive direction
-    SET     r30, r30, X_DIR
+    CLR     r30, r30, X_DIR
     // Enable X stepper
     CLR     r30, r30, X_ENABLE
 STEP_LOOP:
