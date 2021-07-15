@@ -6,7 +6,7 @@
 // 
 // Axis structure. Mask is static at start time,
 // other fields are updated per-command.
-//
+// 12 bytes / 3 registers.
 .struct Axis
     .u32 period
     .u32 next_tick
@@ -45,7 +45,11 @@
 #define TIME r18
 #define REG_BASE r17
 
-#define STEPS r5
+#define END_TICK r5
+.assign Axis, r6, *, xaxis
+.assign Axis, r9, *, yaxis
+.assign Axis, r12, *, zaxis
+
 #define X_NEXT_TICK r6
 #define X_TICK_PERIOD r7
 #define X_MASK r8
@@ -66,26 +70,29 @@
 
 START:
     LDI     REG_BASE, 0x7000
-    LDI     STEPS, 8000 // start with 8000 steps
-    reset_time
-    // about 8kHz
-    LDI     X_TICK_PERIOD.w2, 0
-    LDI     X_TICK_PERIOD.w0, 10000
-    MOV     X_MASK, 1
-    LSL     X_MASK, X_MASK, X_STEP
-    MOV     X_NEXT_TICK, X_TICK_PERIOD
-
-    // Positive direction
-    CLR     r30, r30, X_DIR
+    // End move at 80M ticks
+    LDI     END_TICK.w0, 46080
+    LDI     END_TICK.w2, 1220
+    // Prepare masks
+    MOV     r1, 1
+    LSL     xaxis.mask, r1, X_STEP
+    LSL     yaxis.mask, r1, Y_STEP
+    LSL     zaxis.mask, r1, Z_STEP
     // Enable X stepper
     CLR     r30, r30, X_ENABLE
+    // Positive direction
+    CLR     r30, r30, X_DIR
+    // Test data
+    MOV     xaxis.period, 10000
+PROC_CMD:
+    reset_time
+    MOV     xaxis.next_tick, xaxis.period
 STEP_LOOP:
     get_time
-    QBGT    STEP_LOOP, TIME, X_NEXT_TICK
-    XOR     r30, r30, X_MASK
-    ADD     X_NEXT_TICK, X_NEXT_TICK, X_TICK_PERIOD
-    SUB     STEPS, STEPS, 1
-    QBNE    STEP_LOOP, STEPS, 0
+    QBGT    STEP_LOOP, TIME, xaxis.next_tick
+    XOR     r30, r30, xaxis.mask
+    ADD     xaxis.next_tick, xaxis.next_tick, xaxis.period
+    QBGT    STEP_LOOP, TIME, END_TICK
 // Turn off enable
     SET     r30, r30, X_ENABLE
     SET     r30, r30, Y_ENABLE
