@@ -70,11 +70,15 @@ START:
     LSL     zaxis.mask, r1, Z_STEP
     // Enable X stepper
     CLR     r30, r30, X_ENABLE
+    CLR     r30, r30, Y_ENABLE
+    CLR     r30, r30, Z_ENABLE
     // Positive direction
     CLR     r30, r30, X_DIR
+    CLR     r30, r30, Y_DIR
+    SET     r30, r30, Z_DIR
     // Test data
     MOV     command.x_period, 10000
-    MOV     command.x_period, 21000
+    MOV     command.y_period, 21000
     MOV     command.z_period, 32000
     MOV     command.end_tick, END_TICK
 PROC_CMD:
@@ -101,7 +105,7 @@ ZCHK:
     XOR     r30, r30, zaxis.mask
     ADD     zaxis.next_tick, zaxis.next_tick, zaxis.period
 ENDCHK:
-    QBLT    STEP_LOOP, TIME, END_TICK
+    QBGT    STEP_LOOP, TIME, END_TICK
 // Turn off enable
     SET     r30, r30, X_ENABLE
     SET     r30, r30, Y_ENABLE
