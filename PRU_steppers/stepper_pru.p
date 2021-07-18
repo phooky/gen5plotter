@@ -32,15 +32,6 @@
 
 #define PRU0_ARM_INTERRUPT  34
 
-// Not used at present
-.macro clr_ccnt
-    LBBO    &r0, r20, 0, 4
-    CLR     r0, r0, 3  // disable counter
-    SBBO    &r0, r20, 0, 4
-    SBBO    &r21, r20, 0xc, 4
-    SET     r0, r0, 3 // enable counter
-    SBBO    &r0, r20, 0, 4
-.endm
 
 #define TIME r18
 #define REG_BASE r17
@@ -50,10 +41,9 @@
 .assign Axis, r9, *, yaxis
 .assign Axis, r12, *, zaxis
 
-#define X_NEXT_TICK r6
-#define X_TICK_PERIOD r7
-#define X_MASK r8
+.assign Command, r20, *, command
 
+// Disable counter, store zero, and restart counter
 .macro reset_time
     LBBO    &r0, REG_BASE, 0, 4
     CLR     r0, r0, 3
@@ -83,16 +73,35 @@ START:
     // Positive direction
     CLR     r30, r30, X_DIR
     // Test data
-    MOV     xaxis.period, 10000
+    MOV     command.x_period, 10000
+    MOV     command.x_period, 21000
+    MOV     command.z_period, 32000
+    MOV     command.end_tick, END_TICK
 PROC_CMD:
     reset_time
+    MOV     xaxis.period, command.x_period
     MOV     xaxis.next_tick, xaxis.period
+    MOV     yaxis.period, command.y_period
+    MOV     yaxis.next_tick, yaxis.period
+    MOV     zaxis.period, command.z_period
+    MOV     zaxis.next_tick, zaxis.period
+    MOV     END_TICK, command.end_tick
 STEP_LOOP:
     get_time
-    QBGT    STEP_LOOP, TIME, xaxis.next_tick
+XCHK:
+    QBGT    YCHK, TIME, xaxis.next_tick
     XOR     r30, r30, xaxis.mask
     ADD     xaxis.next_tick, xaxis.next_tick, xaxis.period
-    QBGT    STEP_LOOP, TIME, END_TICK
+YCHK:
+    QBGT    ZCHK, TIME, yaxis.next_tick
+    XOR     r30, r30, yaxis.mask
+    ADD     yaxis.next_tick, yaxis.next_tick, yaxis.period
+ZCHK:
+    QBGT    ENDCHK, TIME, zaxis.next_tick
+    XOR     r30, r30, zaxis.mask
+    ADD     zaxis.next_tick, zaxis.next_tick, zaxis.period
+ENDCHK:
+    QBLT    STEP_LOOP, TIME, END_TICK
 // Turn off enable
     SET     r30, r30, X_ENABLE
     SET     r30, r30, Y_ENABLE
