@@ -16,6 +16,10 @@
 //
 // Command structure.
 //
+// Flags:
+// 0x01 - halt until next signal
+// 0x02 - reset command queue offset
+// 0x04 - halt PRU
 .struct Command
     .u32 x_period
     .u32 y_period
@@ -23,6 +27,7 @@
     .u32 end_tick
     .u8  direction
     .u8  enable
+    .u8  flags
 .ends
 
 .origin 0
@@ -60,9 +65,6 @@
 
 START:
     LDI     REG_BASE, 0x7000
-    // End move at 80M ticks
-    LDI     END_TICK.w0, 46080
-    LDI     END_TICK.w2, 1220
     // Prepare masks
     MOV     r1, 1
     LSL     xaxis.mask, r1, X_STEP
@@ -77,12 +79,9 @@ START:
     CLR     r30, r30, Y_DIR
     SET     r30, r30, Z_DIR
     // Test data
-    MOV     command.x_period, 10000
-    MOV     command.y_period, 21000
-    MOV     command.z_period, 32000
-    MOV     command.end_tick, END_TICK
 PROC_CMD:
     reset_time
+    LBCO    &command, c3, 0, 19
     MOV     xaxis.period, command.x_period
     MOV     xaxis.next_tick, xaxis.period
     MOV     yaxis.period, command.y_period
