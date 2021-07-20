@@ -26,6 +26,8 @@ int main() {
     command.y_period = 21000;
     command.z_period = 32000;
     command.end_tick = 40000000;
+    command.direction = 0x07;
+    command.enable = 0x07;
 
     tpruss_intc_initdata pruss_intc_initdata = PRUSS_INTC_INITDATA;
 	

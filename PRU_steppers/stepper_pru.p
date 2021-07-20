@@ -83,11 +83,11 @@ PROC_CMD:
     reset_time
     LBCO    &command, c3, 0, 19
     MOV     xaxis.period, command.x_period
-    MOV     xaxis.next_tick, xaxis.period
+    LSR     xaxis.next_tick, xaxis.period, 1
     MOV     yaxis.period, command.y_period
-    MOV     yaxis.next_tick, yaxis.period
+    LSR     yaxis.next_tick, yaxis.period, 1
     MOV     zaxis.period, command.z_period
-    MOV     zaxis.next_tick, zaxis.period
+    LSR     zaxis.next_tick, zaxis.period, 1
     MOV     END_TICK, command.end_tick
 STEP_LOOP:
     get_time
