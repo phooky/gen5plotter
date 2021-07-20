@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
 
 // PRU driver headers
 #include <prussdrv.h>
@@ -20,14 +22,36 @@ typedef struct {
     uint8_t flags;
 } Command;
 
-int main() {
+int main(int argc, char** argv) {
     Command command;
+    int argidx = 1;
     command.x_period = 10000;
     command.y_period = 21000;
     command.z_period = 32000;
     command.end_tick = 40000000;
     command.direction = 0x07;
     command.enable = 0x07;
+
+    while (argidx < argc) {
+        if (strncmp(argv[argidx],"-d",2) == 0) {
+            argidx++;
+            if (argc == argidx) return -1;
+            command.direction = atoi(argv[argidx++]);
+        }
+        else if (strncmp(argv[argidx],"-e",2) == 0) {
+            argidx++;
+            if (argc == argidx) return -1;
+            command.enable = atoi(argv[argidx++]);
+        } else {
+            printf("Unrecognized argument %s\n",argv[argidx]);
+            return -1;
+        }
+    }
+
+
+
+    printf("Direction flags == %x\n",command.direction);
+    printf("Enable flags == %x\n",command.enable);
 
     tpruss_intc_initdata pruss_intc_initdata = PRUSS_INTC_INITDATA;
 	

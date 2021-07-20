@@ -40,6 +40,9 @@
 
 #define TIME r18
 #define REG_BASE r17
+#define EN_MASK (1 << X_ENABLE) | (1 << Y_ENABLE) | (1 << Z_ENABLE)
+#define DIR_MASK (1 << X_DIR) | (1 << Y_DIR) | (1 << Z_DIR)
+#define DIR_EN_MASK (0xffffffff ^ (DIR_MASK | EN_MASK))
 
 #define END_TICK r5
 .assign Axis, r6, *, xaxis
@@ -63,6 +66,13 @@
     LBBO    &TIME, REG_BASE, 0xC, 4
 .endm
 
+.macro copy_bit 
+.mparam from_reg, from_bit, to_reg, to_bit
+    QBBC    END_COPY_BIT, from_reg, from_bit
+    SET     to_reg, to_bit
+END_COPY_BIT:
+.endm
+
 START:
     LDI     REG_BASE, 0x7000
     // Prepare masks
@@ -70,15 +80,6 @@ START:
     LSL     xaxis.mask, r1, X_STEP
     LSL     yaxis.mask, r1, Y_STEP
     LSL     zaxis.mask, r1, Z_STEP
-    // Enable X stepper
-    CLR     r30, r30, X_ENABLE
-    CLR     r30, r30, Y_ENABLE
-    CLR     r30, r30, Z_ENABLE
-    // Positive direction
-    CLR     r30, r30, X_DIR
-    CLR     r30, r30, Y_DIR
-    SET     r30, r30, Z_DIR
-    // Test data
 PROC_CMD:
     reset_time
     LBCO    &command, c3, 0, 19
@@ -89,6 +90,17 @@ PROC_CMD:
     MOV     zaxis.period, command.z_period
     LSR     zaxis.next_tick, zaxis.period, 1
     MOV     END_TICK, command.end_tick
+    // set direction flags
+    MOV     r1.w0, (DIR_EN_MASK) & 0xffff
+    MOV     r1.w2, (DIR_EN_MASK) >> 16
+    AND     r1, r30, r1
+    copy_bit command.direction, 0, r1, X_DIR
+    copy_bit command.direction, 1, r1, Y_DIR
+    copy_bit command.direction, 2, r1, Z_DIR
+    copy_bit command.enable, 0, r1, X_ENABLE
+    copy_bit command.enable, 1, r1, Y_ENABLE
+    copy_bit command.enable, 2, r1, Z_ENABLE
+    MOV     r30, r1
 STEP_LOOP:
     get_time
 XCHK:
