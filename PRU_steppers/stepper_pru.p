@@ -100,6 +100,8 @@ PROC_CMD:
     copy_bit command.enable, 0, r1, X_ENABLE
     copy_bit command.enable, 1, r1, Y_ENABLE
     copy_bit command.enable, 2, r1, Z_ENABLE
+    SET     r1, X_VREF
+    SET     r1, Y_VREF
     MOV     r30, r1
 STEP_LOOP:
     get_time

@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
     command.x_period = 10000;
     command.y_period = 21000;
     command.z_period = 32000;
-    command.end_tick = 40000000;
+    command.end_tick = 160000000;
     command.direction = 0x07;
     command.enable = 0x07;
 
