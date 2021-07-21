@@ -27,7 +27,7 @@
     .u32 end_tick
     .u8  direction
     .u8  enable
-    .u8  flags
+    .u8  cmd
 .ends
 
 .origin 0
@@ -37,7 +37,7 @@
 
 #define PRU0_ARM_INTERRUPT  34
 
-
+#define CMD_OFF r16.b0 
 #define TIME r18
 #define REG_BASE r17
 #define EN_MASK (1 << X_ENABLE) | (1 << Y_ENABLE) | (1 << Z_ENABLE)
@@ -56,8 +56,8 @@
     LBBO    &r0, REG_BASE, 0, 4
     CLR     r0, r0, 3
     SBBO    &r0, REG_BASE, 0, 4
-    XOR     r1, r1, r1
-    SBBO    &r1, REG_BASE, 0xc, 4
+    LDI     r1, 0
+    SBBO    &r1, REG_BASE, 0xc, 1
     SET     r0, r0, 3
     SBBO    &r0, REG_BASE, 0, 4
 .endm
@@ -75,6 +75,7 @@ END_COPY_BIT:
 
 START:
     LDI     REG_BASE, 0x7000
+    LDI     CMD_OFF, 0
     // Prepare masks
     MOV     r1, 1
     LSL     xaxis.mask, r1, X_STEP
@@ -82,7 +83,7 @@ START:
     LSL     zaxis.mask, r1, Z_STEP
 PROC_CMD:
     reset_time
-    LBCO    &command, c3, 0, 19
+    LBCO    &command, c3, CMD_OFF, 19
     MOV     xaxis.period, command.x_period
     LSR     xaxis.next_tick, xaxis.period, 1
     MOV     yaxis.period, command.y_period
@@ -90,7 +91,7 @@ PROC_CMD:
     MOV     zaxis.period, command.z_period
     LSR     zaxis.next_tick, zaxis.period, 1
     MOV     END_TICK, command.end_tick
-    // set direction flags
+    // set direction and enable flags
     MOV     r1.w0, (DIR_EN_MASK) & 0xffff
     MOV     r1.w2, (DIR_EN_MASK) >> 16
     AND     r1, r30, r1
@@ -119,11 +120,13 @@ ZCHK:
     ADD     zaxis.next_tick, zaxis.next_tick, zaxis.period
 ENDCHK:
     QBGT    STEP_LOOP, TIME, END_TICK
+    ADD     CMD_OFF, CMD_OFF, 20
+    QBNE    PROC_CMD, command.cmd, 0x1
 // Turn off enable
     SET     r30, r30, X_ENABLE
     SET     r30, r30, Y_ENABLE
     SET     r30, r30, Z_ENABLE
-DONE:
     // Let the host know we are done
     MOV R31.b0, #PRU0_ARM_INTERRUPT
+DONE:
     HALT
