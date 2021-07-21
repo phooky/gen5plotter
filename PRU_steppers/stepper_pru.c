@@ -12,6 +12,11 @@
 
 #define ADDR_PRU_DATA_0  0x01C30000
 
+enum {
+    CMD_GO = 0x0,
+    CMD_SHUTDOWN = 0x1,
+};
+
 typedef struct {
     uint32_t x_period;
     uint32_t y_period;
@@ -19,8 +24,28 @@ typedef struct {
     uint32_t end_tick;
     uint8_t direction;
     uint8_t enable;
-    uint8_t flags;
-} Command;
+    uint8_t cmd;
+    uint8_t reserved;
+} __attribute__((packed)) Command;
+
+uint8_t queue_idx = 0;
+uint8_t cmds_outstanding = 0;
+uint16_t cmds_processed = 0;
+
+void wait_for_event() {
+    unsigned int event = prussdrv_pru_wait_event(PRU_EVTOUT_0);
+    prussdrv_pru_clear_event(PRU0_ARM_INTERRUPT);
+    cmds_outstanding--;
+    cmds_processed++;
+}
+
+void enque(Command* cmd) {
+    while (cmds_outstanding > 20) wait_for_event();
+    if (queue_idx >= 16) { cmd->cmd |= 0x4; }
+    prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, queue_idx * sizeof(Command), (uint32_t*)cmd, sizeof(Command));
+    if (queue_idx >= 16) { queue_idx = 0; } else { queue_idx++; }
+    cmds_outstanding++;
+}
 
 int main(int argc, char** argv) {
     Command command;
@@ -31,6 +56,7 @@ int main(int argc, char** argv) {
     command.end_tick = 160000000;
     command.direction = 0x07;
     command.enable = 0x07;
+    command.cmd = 0x00;
 
     while (argidx < argc) {
         if (strncmp(argv[argidx],"-d",2) == 0) {
@@ -60,18 +86,19 @@ int main(int argc, char** argv) {
         fprintf(stderr, "Could not open uio%d, aborting\n", PRU_EVTOUT_0);
         return -1;
     }
-    // Set up test command
-    prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (uint32_t*)&command, sizeof(Command));  // spi code
     // Initialize interrupts
     prussdrv_pruintc_init(&pruss_intc_initdata);
+    // Set up test command
+    enque(&command);
     // Run PRU program
     prussdrv_exec_program(WHICH_PRU, "./stepper_pru.bin");
+    command.direction = (~command.direction)&0x7;
+    enque(&command);
 
-    // Just to be clear: the default interrupt setup here is a mystery that would benefit
-    // from proper investigation.
-    unsigned int event = prussdrv_pru_wait_event(PRU_EVTOUT_0);
-    printf("Received event %d\n",event);
-    prussdrv_pru_clear_event(PRU0_ARM_INTERRUPT);
+    wait_for_event();
+
+    printf("SUMMARY: oustanding events %d, processed events %d, queue offset %d\n",
+            cmds_outstanding, cmds_processed, queue_idx);
 
     prussdrv_pru_disable(WHICH_PRU);
     prussdrv_exit ();

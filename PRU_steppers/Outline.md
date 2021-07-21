@@ -1,20 +1,49 @@
-== Basic outline of PRU stepper driver
+== Current design
 
-* We'll be using Timer2, which appears to be available.
-* PRU will have a queue in its own RAM
-* PRU will just interpolate commands merrily until the queue is empty
-* We should target straight-line movement. HP-GL specifies polygon approximation anyway.
+Our current design does not support acceleration.
+
+Command queue is in PRU0 data RAM, which is 0x1ff bytes long.
+A command is five 32-bit words (16 bytes): a velocity for each axis,
+a total length in PRU ticks, and four bytes for axis direciton/enable
+and top-level commands.
+
+The PRU will send an interrupt to the ARM upon completion of each
+command and, presuming the command does not involve halting or
+pausing the stepper progress, automatically continue on to the
+next command.
+
+We should assume that the minimum command length is around 5uS, or
+1000 PRU ticks. This will ensure that we don't miss any interrupts.
+
+== Command Queue
+
+The command queue should be about 32 commands long. The command queue
+offset should be reset manually by the sender.
+
+
+TODO: the PRU can indicate the last processed command by writing it to
+a fixed location in PRU0 data RAM.
+
+== Commands
+
+The command byte looks like this:
+
+* bits 0-2: command
+* bit 3: zero queue position after this command
+* bits 4-7: unused
+
+=== Command values
+
+* 0 - perform move
+* 1 - shutdown
+
+== TODO
 
 What about acceleration?
 
 What about zeroing?
 
-What should a command look like?
-
-DWELL -- special case of
-
 At start of command, we have a current X Y Z
 
-- REFACTOR: strip down code to bare minimum
 - TECH TEST: send a buffer of commands to the PRU
 
