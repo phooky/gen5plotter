@@ -57,7 +57,7 @@
     CLR     r0, r0, 3
     SBBO    &r0, REG_BASE, 0, 4
     LDI     r1, 0
-    SBBO    &r1, REG_BASE, 0xc, 1
+    SBBO    &r1, REG_BASE, 0xc, 4
     SET     r0, r0, 3
     SBBO    &r0, REG_BASE, 0, 4
 .endm
