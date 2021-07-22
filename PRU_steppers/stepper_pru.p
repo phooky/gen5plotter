@@ -43,7 +43,6 @@
 #define DIR_MASK (1 << X_DIR) | (1 << Y_DIR) | (1 << Z_DIR)
 #define DIR_EN_MASK (0xffffffff ^ (DIR_MASK | EN_MASK))
 
-#define END_TICK r17
 .assign Axis, r6, *, xaxis
 .assign Axis, r9, *, yaxis
 .assign Axis, r12, *, zaxis
@@ -73,7 +72,6 @@ PROC_CMD:
     LSR     yaxis.next_tick, yaxis.period, 1
     MOV     zaxis.period, command.z_period
     LSR     zaxis.next_tick, zaxis.period, 1
-    MOV     END_TICK, command.end_tick
     // set direction and enable flags
     MOV     r1.w0, (DIR_EN_MASK) & 0xffff
     MOV     r1.w2, (DIR_EN_MASK) >> 16
@@ -103,7 +101,7 @@ ZCHK:
     XOR     r30, r30, zaxis.mask
     ADD     zaxis.next_tick, zaxis.next_tick, zaxis.period
 ENDCHK:
-    QBGT    STEP_LOOP, TICKS, END_TICK
+    QBGT    STEP_LOOP, TICKS, command.end_tick
     ADD     CMD_OFF, CMD_OFF, 20
     QBNE    PROC_CMD, command.cmd, 0x1
 // Turn off enable

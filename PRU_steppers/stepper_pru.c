@@ -44,7 +44,7 @@ void enque(Command* cmd) {
     while (cmds_outstanding > 20) wait_for_event();
     if (queue_idx >= 16) { cmd->cmd |= 0x4; }
     printf("Writing command to offset %d\n", queue_idx*sizeof(Command));
-    prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, queue_idx * sizeof(Command), (uint32_t*)cmd, sizeof(Command));
+    prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, queue_idx * sizeof(Command)/4, (uint32_t*)cmd, sizeof(Command));
     if (queue_idx >= 16) { queue_idx = 0; } else { queue_idx++; }
     cmds_outstanding++;
 }
