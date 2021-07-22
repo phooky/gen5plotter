@@ -38,33 +38,17 @@
 #define PRU0_ARM_INTERRUPT  34
 
 #define CMD_OFF r16.b0 
-#define TIME r18
-#define REG_BASE r17
+#define TICKS r18
 #define EN_MASK (1 << X_ENABLE) | (1 << Y_ENABLE) | (1 << Z_ENABLE)
 #define DIR_MASK (1 << X_DIR) | (1 << Y_DIR) | (1 << Z_DIR)
 #define DIR_EN_MASK (0xffffffff ^ (DIR_MASK | EN_MASK))
 
-#define END_TICK r5
+#define END_TICK r17
 .assign Axis, r6, *, xaxis
 .assign Axis, r9, *, yaxis
 .assign Axis, r12, *, zaxis
 
 .assign Command, r20, *, command
-
-// Disable counter, store zero, and restart counter
-.macro reset_time
-    LBBO    &r0, REG_BASE, 0, 4
-    CLR     r0, r0, 3
-    SBBO    &r0, REG_BASE, 0, 4
-    LDI     r1, 0
-    SBBO    &r1, REG_BASE, 0xc, 4
-    SET     r0, r0, 3
-    SBBO    &r0, REG_BASE, 0, 4
-.endm
-
-.macro get_time
-    LBBO    &TIME, REG_BASE, 0xC, 4
-.endm
 
 .macro copy_bit 
 .mparam from_reg, from_bit, to_reg, to_bit
@@ -74,19 +58,18 @@ END_COPY_BIT:
 .endm
 
 START:
-    LDI     REG_BASE, 0x7000
     LDI     CMD_OFF, 0
+    LDI     TICKS, 0
     // Prepare masks
     MOV     r1, 1
     LSL     xaxis.mask, r1, X_STEP
     LSL     yaxis.mask, r1, Y_STEP
     LSL     zaxis.mask, r1, Z_STEP
 PROC_CMD:
-    reset_time
-    LBCO    &command, c3, CMD_OFF, 19
+    LBCO    &command, c3, CMD_OFF, 19           // 7 cycles
     MOV     xaxis.period, command.x_period
     LSR     xaxis.next_tick, xaxis.period, 1
-    MOV     yaxis.period, command.y_period
+    MOV     yaxis.period, command.y_period 
     LSR     yaxis.next_tick, yaxis.period, 1
     MOV     zaxis.period, command.z_period
     LSR     zaxis.next_tick, zaxis.period, 1
@@ -95,31 +78,32 @@ PROC_CMD:
     MOV     r1.w0, (DIR_EN_MASK) & 0xffff
     MOV     r1.w2, (DIR_EN_MASK) >> 16
     AND     r1, r30, r1
-    copy_bit command.direction, 0, r1, X_DIR
-    copy_bit command.direction, 1, r1, Y_DIR
-    copy_bit command.direction, 2, r1, Z_DIR
-    copy_bit command.enable, 0, r1, X_ENABLE
-    copy_bit command.enable, 1, r1, Y_ENABLE
-    copy_bit command.enable, 2, r1, Z_ENABLE
+    copy_bit command.direction, 0, r1, X_DIR    // 2 cycles
+    copy_bit command.direction, 1, r1, Y_DIR    // 2 cycles
+    copy_bit command.direction, 2, r1, Z_DIR    // 2 cycles
+    copy_bit command.enable, 0, r1, X_ENABLE    // 2 cycles
+    copy_bit command.enable, 1, r1, Y_ENABLE    // 2 cycles
+    copy_bit command.enable, 2, r1, Z_ENABLE    // 2 cycles
     SET     r1, X_VREF
     SET     r1, Y_VREF
     MOV     r30, r1
+    LDI     TICKS, 33   // Approx. 33 cycles from PROC_CMD
 STEP_LOOP:
-    get_time
+    ADD     TICKS, TICKS, 11 // Approx. 11 cycles in loop
 XCHK:
-    QBGT    YCHK, TIME, xaxis.next_tick
+    QBGT    YCHK_DELAY, TICKS, xaxis.next_tick
     XOR     r30, r30, xaxis.mask
     ADD     xaxis.next_tick, xaxis.next_tick, xaxis.period
 YCHK:
-    QBGT    ZCHK, TIME, yaxis.next_tick
+    QBGT    ZCHK_DELAY, TICKS, yaxis.next_tick
     XOR     r30, r30, yaxis.mask
     ADD     yaxis.next_tick, yaxis.next_tick, yaxis.period
 ZCHK:
-    QBGT    ENDCHK, TIME, zaxis.next_tick
+    QBGT    ENDCHK_DELAY, TICKS, zaxis.next_tick
     XOR     r30, r30, zaxis.mask
     ADD     zaxis.next_tick, zaxis.next_tick, zaxis.period
 ENDCHK:
-    QBGT    STEP_LOOP, TIME, END_TICK
+    QBGT    STEP_LOOP, TICKS, END_TICK
     ADD     CMD_OFF, CMD_OFF, 20
     QBNE    PROC_CMD, command.cmd, 0x1
 // Turn off enable
@@ -130,3 +114,14 @@ ENDCHK:
     MOV R31.b0, #PRU0_ARM_INTERRUPT
 DONE:
     HALT
+
+YCHK_DELAY:
+    MOV     r0, r0
+    JMP     YCHK
+ZCHK_DELAY:
+    MOV     r0, r0
+    JMP     ZCHK
+ENDCHK_DELAY:
+    MOV     r0, r0
+    JMP     ENDCHK
+

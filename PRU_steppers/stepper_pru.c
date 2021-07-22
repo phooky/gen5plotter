@@ -100,9 +100,6 @@ int main(int argc, char** argv) {
 
 
     wait_for_event();
-    printf("one complete\n");
-    wait_for_event();
-    printf("two complete\n");
 
     printf("SUMMARY: oustanding events %d, processed events %d, queue offset %d\n",
             cmds_outstanding, cmds_processed, queue_idx);
