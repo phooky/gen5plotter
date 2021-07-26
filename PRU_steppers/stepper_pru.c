@@ -35,7 +35,8 @@ uint16_t cmds_processed = 0;
 void wait_for_event() {
     unsigned int event = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     printf("waited, event val %d\n", event);
-    prussdrv_pru_clear_event(PRU0_ARM_INTERRUPT);
+    fflush(stdout);
+    prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
     cmds_outstanding--;
     cmds_processed++;
 }
