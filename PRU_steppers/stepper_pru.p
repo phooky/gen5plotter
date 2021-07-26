@@ -123,6 +123,9 @@ ENDCHK:
     ADD     CMD_OFF, CMD_OFF, 20
     // Let the host know we are done
     MOV R31.b0, #PRU0_ARM_INTERRUPT
+    QBBC    SKIP_IDX_RST, command.cmd, 0x2 
+    LDI     CMD_OFF, 0
+SKIP_IDX_RST:
     QBNE    PROC_CMD, command.cmd, 0x1
 // Turn off enable
     SET     r30, r30, X_ENABLE

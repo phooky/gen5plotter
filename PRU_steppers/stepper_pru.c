@@ -28,26 +28,44 @@ typedef struct {
     uint8_t reserved;
 } __attribute__((packed,aligned(4))) Command;
 
-uint8_t queue_idx = 0;
+const uint32_t NO_EVT_CODE = 0xffffffff;
 uint8_t cmds_outstanding = 0;
 uint16_t cmds_processed = 0;
+uint32_t last_evt_code = NO_EVT_CODE;
+
+// Queue management
+uint8_t queue_idx = 0; // next empty queue slot
+const uint8_t queue_len = 20; // total number of Command entries in queue
 
 void wait_for_event() {
     unsigned int event = prussdrv_pru_wait_event(PRU_EVTOUT_0);
-    printf("waited, event val %d\n", event);
-    fflush(stdout);
     prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
-    cmds_outstanding--;
-    cmds_processed++;
+    if (last_evt_code == NO_EVT_CODE) {
+        cmds_outstanding--;
+        cmds_processed++;
+    } else {
+        int diff = event - last_evt_code;
+        cmds_outstanding -= diff;
+        cmds_processed += diff;
+        if (diff != 1) {
+            printf("%d events missed\n",diff);
+        }
+    }
+    last_evt_code = event;
 }
 
 void enque(Command* cmd) {
-    while (cmds_outstanding > 20) wait_for_event();
-    if (queue_idx >= 16) { cmd->cmd |= 0x4; }
+    while (cmds_outstanding > (queue_len-1)) wait_for_event();
+    cmd->cmd &= ~0x2;
+    // tell to loop back to 0
+    if (queue_idx == (queue_len-1)) { cmd->cmd |= 0x2; } 
     printf("Writing command to offset %d\n", queue_idx*sizeof(Command));
     prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, queue_idx * sizeof(Command)/sizeof(uint32_t),
         (uint32_t*)cmd, sizeof(Command));
-    if (queue_idx >= 16) { queue_idx = 0; } else { queue_idx++; }
+    queue_idx++;
+    if (cmd->cmd & 0x2) {
+        queue_idx = 0;
+    }
     cmds_outstanding++;
 }
 
@@ -92,19 +110,27 @@ int main(int argc, char** argv) {
     }
     // Initialize interrupts
     prussdrv_pruintc_init(&pruss_intc_initdata);
-    // Set up test command
+
     enque(&command);
-    command.direction = (~command.direction)&0x7;
-    command.cmd = 0x01;
+    command.direction ^= 0x7;
     enque(&command);
+    command.direction ^= 0x7;
+
     // Run PRU program
     prussdrv_exec_program(WHICH_PRU, "./stepper_pru.bin");
+    
+    for (int i = 0; i < 25; i++) {
+        enque(&command);
+        command.direction ^= 0x7;
+    }
+    command.cmd = 0x1;
+    enque(&command);
 
 
-    wait_for_event();
-    printf("one complete\n");
-    wait_for_event();
-    printf("two complete\n");
+    while (cmds_outstanding > 0) {
+        wait_for_event();
+        printf("one complete\n");
+    }
 
     printf("SUMMARY: oustanding events %d, processed events %d, queue offset %d\n",
             cmds_outstanding, cmds_processed, queue_idx);
