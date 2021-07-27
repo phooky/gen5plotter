@@ -123,7 +123,7 @@ ENDCHK:
     ADD     CMD_OFF, CMD_OFF, 20
     // Let the host know we are done
     MOV R31.b0, #PRU0_ARM_INTERRUPT
-    QBBC    SKIP_IDX_RST, command.cmd, 0x2 
+    QBBC    SKIP_IDX_RST, command.cmd, 0x4 // Check zero queue bit
     LDI     CMD_OFF, 0
 SKIP_IDX_RST:
     QBNE    PROC_CMD, command.cmd, 0x1

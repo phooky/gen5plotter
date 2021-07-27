@@ -36,6 +36,7 @@ The command byte looks like this:
 
 * 0 - perform move
 * 1 - shutdown
+* 2 - wait for start signal
 
 == TODO
 

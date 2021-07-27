@@ -10,8 +10,9 @@
 
 
 #define WHICH_PRU  		 0
-
 #define ADDR_PRU_DATA_0  0x01C30000
+
+const uint8_t ZERO_QUEUE_BIT = 0x4;
 
 enum {
     CMD_GO = 0x0,
@@ -52,19 +53,21 @@ void wait_for_event() {
             printf("%d events missed\n",diff);
         }
     }
+    printf("got event; oustanding events %d, processed events %d, queue offset %d\n",
+            cmds_outstanding, cmds_processed, queue_idx);
     last_evt_code = event;
 }
 
 void enque(Command* cmd) {
-    while (cmds_outstanding > (queue_len-1)) wait_for_event();
-    cmd->cmd &= ~0x2;
+    while (cmds_outstanding > 10) wait_for_event();
+    cmd->cmd &= ~ZERO_QUEUE_BIT;
     // tell to loop back to 0
-    if (queue_idx == (queue_len-1)) { cmd->cmd |= 0x2; } 
+    if (queue_idx == (queue_len-1)) { cmd->cmd |= ZERO_QUEUE_BIT; } 
     printf("Writing command to offset %d\n", queue_idx*sizeof(Command));
     prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, queue_idx * sizeof(Command)/sizeof(uint32_t),
         (uint32_t*)cmd, sizeof(Command));
     queue_idx++;
-    if (cmd->cmd & 0x2) {
+    if (cmd->cmd & ZERO_QUEUE_BIT) {
         queue_idx = 0;
     }
     cmds_outstanding++;
