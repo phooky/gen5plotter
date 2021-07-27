@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
 // PRU driver headers
 #include <prussdrv.h>
@@ -69,6 +70,42 @@ void enque(Command* cmd) {
     cmds_outstanding++;
 }
 
+typedef struct { int32_t a; int32_t b; } AB;
+
+AB xy_to_ab(int32_t x, int32_t y) {
+    AB r = { .a = y+x, .b = y-x };
+    return r;
+}
+
+
+void move_rel_xy_time(int32_t x_delta, int32_t y_delta, uint32_t ticks) {
+    Command cmd;
+    cmd.end_tick = ticks;
+    cmd.enable = 0x4;
+    cmd.direction = 0x1;
+    AB ab = xy_to_ab(x_delta,y_delta);
+    int32_t a = ab.a; int32_t b = ab.b;
+    if (a < 0) { cmd.direction ^= 0x1; a = -a; }
+    if (b < 0) { cmd.direction ^= 0x2; b = -b; }
+    cmd.cmd = 0x00;
+    cmd.z_period = ticks + 1;
+    //printf("X %d Y %d A %d B %d\n",x_delta,y_delta,a,b);
+    cmd.x_period = (a==0)?(ticks+1):(ticks / (a * 2));
+    cmd.y_period = (b==0)?(ticks+1):(ticks / (b * 2));
+    //printf("X_P %d Y_P %d\n",cmd.x_period, cmd.y_period);
+    enque(&cmd);
+}
+void dwell();
+void stop() {
+    Command cmd;
+    cmd.enable = 0x0;
+    cmd.cmd = 0x01;
+    cmd.end_tick = 200;
+    enque(&cmd);
+}
+
+    
+
 int main(int argc, char** argv) {
     Command command;
     int argidx = 1;
@@ -110,22 +147,23 @@ int main(int argc, char** argv) {
     }
     // Initialize interrupts
     prussdrv_pruintc_init(&pruss_intc_initdata);
+    enque(&command);
+    command.direction ^= 0x7;
+    enque(&command);
+    command.direction ^= 0x7;
 
-    enque(&command);
-    command.direction ^= 0x7;
-    enque(&command);
-    command.direction ^= 0x7;
 
     // Run PRU program
     prussdrv_exec_program(WHICH_PRU, "./stepper_pru.bin");
-    
-    for (int i = 0; i < 25; i++) {
-        enque(&command);
-        command.direction ^= 0x7;
+
+    for (int i = 0; i < 20; i++) {
+        move_rel_xy_time( 0, 4000, 80000000 );
+        move_rel_xy_time( 4000, 0, 80000000 );
+        move_rel_xy_time( 0, -4000, 80000000 );
+        move_rel_xy_time( -4000, 0, 80000000 );
     }
     command.cmd = 0x1;
     enque(&command);
-
 
     while (cmds_outstanding > 0) {
         wait_for_event();

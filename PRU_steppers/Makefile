@@ -8,7 +8,7 @@ INCDIR_APP_LOADER?=$(PRUDIR)/app_loader/include
 PASM=$(PRUDIR)/utils/pasm
 
 CFLAGS+= -Wall -I$(INCDIR_APP_LOADER) -D__DEBUG -O2 -mtune=arm926ej-s -march=armv5te
-LDFLAGS+=-L$(LIBDIR_APP_LOADER) -lprussdrv -lpthread -static-libgcc -static
+LDFLAGS+=-L$(LIBDIR_APP_LOADER) -lprussdrv -lpthread -lm -static-libgcc -static
 TARGET=stepper_pru
 
 PRU_BINS = stepper_pru.bin
