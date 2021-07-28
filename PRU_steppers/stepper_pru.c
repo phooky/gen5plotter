@@ -11,7 +11,6 @@
 
 
 #define WHICH_PRU  		 0
-#define ADDR_PRU_DATA_0  0x01C30000
 
 const uint8_t ZERO_QUEUE_BIT = 0x4;
 
@@ -35,6 +34,7 @@ uint32_t last_evt_code = NO_EVT_CODE;
 uint8_t queue_idx = 0; // next empty queue slot
 const uint8_t queue_len = 20; // total number of Command entries in queue
 
+// Wait for next event and update oustanding/processed command counts
 void wait_for_event() {
     unsigned int event = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
@@ -53,7 +53,7 @@ void wait_for_event() {
     last_evt_code = event;
 }
 
-void enque(Command* cmd) {
+void enqueue(Command* cmd) {
     while (cmds_outstanding > 8) wait_for_event();
     cmd->cmd &= ~ZERO_QUEUE_BIT;
     bool zero_queue = (queue_idx >= queue_len - 2);
@@ -70,13 +70,17 @@ void enque(Command* cmd) {
 }
 
 typedef struct { int32_t a; int32_t b; } AB;
-
+/*
+ * Convert X/Y coordinates, in steps, to A/B hbot coordinates
+ */
 AB xy_to_ab(int32_t x, int32_t y) {
     AB r = { .a = y+x, .b = y-x };
     return r;
 }
 
-
+/*
+ * Enqueue a relative X/Y move, in steps and timer ticks
+ */
 void move_rel_xy_time(int32_t x_delta, int32_t y_delta, uint32_t ticks) {
     Command cmd;
     cmd.end_tick = ticks;
@@ -92,17 +96,56 @@ void move_rel_xy_time(int32_t x_delta, int32_t y_delta, uint32_t ticks) {
     cmd.x_period = (a==0)?(ticks+1):(ticks / (a * 2));
     cmd.y_period = (b==0)?(ticks+1):(ticks / (b * 2));
     //printf("X_P %d Y_P %d\n",cmd.x_period, cmd.y_period);
-    enque(&cmd);
+    enqueue(&cmd);
 }
-void dwell();
+
+/*
+ * Machine state
+ */
+float current_x =0.0, current_y =0.0;
+
+/*
+ * Machine configuration
+ */
+const float steps_per_mm = 100.0;
+// Maximum X coordinate in millimeters
+const float max_x = 400.0;
+// Maximum Y coordinate in millimeters
+const float max_y = 300.0;
+// Maximum velocity in mm/s
+const float max_v = 100.0;
+// Internal PRU ticks per second (200 MHz)
+const float ticks_per_second = 200 * 1000 * 1000;
+
+/**
+ * Move to XY coordinates from current position.
+ * @param x the x coordinate in millimeters (mm).
+ * @param y the y coordinate in millimeters (mm).
+ * @param v the velocity of the move, in millimeters per second (mm/s).
+ */
+void move_xy(float x, float y, float v);
+
+/**
+ * Dwell at given location for a specified time.
+ * @param t the time to dwell, in seconds
+ */
+void dwell(float time);
+
+/**
+ * Enqueue a stop command.
+ */
 void stop() {
     Command cmd;
     cmd.enable = 0x0;
     cmd.cmd = 0x01;
     cmd.end_tick = 200;
-    enque(&cmd);
+    enqueue(&cmd);
 }
 
+/**
+ * Wait until current queue is completely processed.
+ */
+void wait_for_completion();
     
 
 int main(int argc, char** argv) {
