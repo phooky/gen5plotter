@@ -34,8 +34,15 @@ uint32_t last_evt_code = NO_EVT_CODE;
 uint8_t queue_idx = 0; // next empty queue slot
 const uint8_t queue_len = 20; // total number of Command entries in queue
 
+// Check if we're running or not
+bool is_running = false;
+
 // Wait for next event and update oustanding/processed command counts
 void wait_for_event() {
+    if (!is_running) {
+        prussdrv_pru_send_event (ARM_PRU0_INTERRUPT);
+        is_running = true;
+    }
     unsigned int event = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
     if (last_evt_code == NO_EVT_CODE) {
@@ -49,6 +56,9 @@ void wait_for_event() {
         if (diff != 1) {
             printf("### %d events missed\n",diff);
         }
+    }
+    if (cmds_outstanding == 0) {
+        is_running = false;
     }
     last_evt_code = event;
 }
@@ -223,9 +233,6 @@ int main(int argc, char** argv) {
     // Run PRU program
     prussdrv_exec_program(WHICH_PRU, "./stepper_pru.bin");
 
-    move_rel_xy_time( 0, -4000, 80000000 );
-    move_rel_xy_time( -4000, 0, 80000000 );
-    prussdrv_pru_send_event (ARM_PRU0_INTERRUPT);
     for (int i = 0; i < 12; i++) {
         printf("*** SQUARE START ***\n");
         move_rel_xy_time( 0, 4000, 80000000 );
