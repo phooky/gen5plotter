@@ -109,11 +109,15 @@ float current_x =0.0, current_y =0.0;
  */
 const float steps_per_mm = 100.0;
 // Maximum X coordinate in millimeters
-const float max_x = 400.0;
+const float max_x = 252.0;
 // Maximum Y coordinate in millimeters
-const float max_y = 300.0;
+const float max_y = 199.0;
 // Maximum velocity in mm/s
-const float max_v = 100.0;
+const float max_v = 150.0;
+// Steps per mm, XY
+const float steps_per_mm_xy = 88.573186;
+// Steps per mm, Z
+const float steps_per_mm_z = 400.0;
 // Internal PRU ticks per second (200 MHz)
 const float ticks_per_second = 200 * 1000 * 1000;
 
