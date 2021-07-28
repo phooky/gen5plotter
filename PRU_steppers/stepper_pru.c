@@ -93,8 +93,8 @@ void move_rel_xy_time(int32_t x_delta, int32_t y_delta, uint32_t ticks) {
     cmd.cmd = 0x00;
     cmd.z_period = ticks + 1;
     //printf("X %d Y %d A %d B %d\n",x_delta,y_delta,a,b);
-    cmd.x_period = (a==0)?(ticks+1):(ticks / (a * 2));
-    cmd.y_period = (b==0)?(ticks+1):(ticks / (b * 2));
+    cmd.x_period = (a==0)?0x7fffffff:(ticks / (a * 2));
+    cmd.y_period = (b==0)?0x7fffffff:(ticks / (b * 2));
     //printf("X_P %d Y_P %d\n",cmd.x_period, cmd.y_period);
     enqueue(&cmd);
 }
@@ -121,19 +121,59 @@ const float steps_per_mm_z = 400.0;
 // Internal PRU ticks per second (200 MHz)
 const float ticks_per_second = 200 * 1000 * 1000;
 
+
 /**
- * Move to XY coordinates from current position.
+ * Move in XY coordinates relative to the current position.
+ * Ignores commands that try to move at exceptionally low speeds.
+ * TODO: check for overlong moves (max: 10s)
+ * @param dx the delta x coordinate in millimeters (mm).
+ * @param dy the delta y coordinate in millimeters (mm).
+ * @param v the velocity of the move, in millimeters per second (mm/s).
+ */
+void move_relative_xy(float dx, float dy, float v) {
+    if (fabsf(v) <= 0.1) {
+        fprintf(stderr, "Refusing to move at less that 0.1mm/s\n");
+        return;
+    }
+    int32_t steps_x = (int32_t)(dx * steps_per_mm_xy);
+    int32_t steps_y = (int32_t)(dy * steps_per_mm_xy);
+    float len = sqrt(dx*dx + dy*dy);
+    uint32_t time_in_ticks = (uint32_t)(ticks_per_second * (len / v));
+    move_rel_xy_time(steps_x,steps_y,time_in_ticks);
+    current_x += dx;
+    current_y += dy;
+}
+
+/**
+ * Move to the specified XY coordinates from current position.
  * @param x the x coordinate in millimeters (mm).
  * @param y the y coordinate in millimeters (mm).
  * @param v the velocity of the move, in millimeters per second (mm/s).
  */
-void move_xy(float x, float y, float v);
+void move_xy(float x, float y, float v) {
+    float dx = x - current_x;
+    float dy = y - current_y;
+    move_relative_xy(dx, dy, v);
+}
 
 /**
  * Dwell at given location for a specified time.
+ * TODO: check for overlong dwells (max: 10s)
  * @param t the time to dwell, in seconds
  */
-void dwell(float time);
+void dwell(float time) {
+    uint32_t time_in_ticks = (uint32_t)(ticks_per_second * time);
+    move_rel_xy_time(0,0,time_in_ticks);
+}
+
+
+/**
+ * Set bot's idea of home (0,0).
+ */
+void set_here_as_home() {
+    current_x = 0.0;
+    current_y = 0.0;
+}
 
 /**
  * Enqueue a stop command.
