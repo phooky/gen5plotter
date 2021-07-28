@@ -37,7 +37,7 @@
 
 #define PRU0_ARM_INTERRUPT  34
 
-#define CMD_OFF r16.b0 
+#define CMD_OFF r16.w0 
 #define TIME r18
 #define REG_BASE r17
 #define EN_MASK (1 << X_ENABLE) | (1 << Y_ENABLE) | (1 << Z_ENABLE)
@@ -81,9 +81,23 @@ START:
     LSL     xaxis.mask, r1, X_STEP
     LSL     yaxis.mask, r1, Y_STEP
     LSL     zaxis.mask, r1, Z_STEP
+POLL_FOR_START:
+    QBBC    POLL_FOR_START, r31, 30
+    // Clear the interrupt
+    LDI     r1, 0x01
+    LDI     r2, 0x284
+    SBCO    r1, c0, r2, 4
+    LDI     r2, 0x384
+    SBCO    r1, c0, r2, 4
+    
 PROC_CMD:
     reset_time
-    LBCO    &command, c3, CMD_OFF, 19
+    LBCO    &command, c3, CMD_OFF, 20
+    // Let host know that command has been read
+    MOV     R31.b0, #PRU0_ARM_INTERRUPT
+    // Check for end state
+    QBBS    DONE, command.cmd, 0
+    // Load command
     MOV     xaxis.period, command.x_period
     LSR     xaxis.next_tick, xaxis.period, 1
     MOV     yaxis.period, command.y_period
@@ -121,15 +135,12 @@ ZCHK:
 ENDCHK:
     QBGT    STEP_LOOP, TIME, END_TICK
     ADD     CMD_OFF, CMD_OFF, 20
-    // Let the host know we are done
-    MOV R31.b0, #PRU0_ARM_INTERRUPT
-    QBBC    SKIP_IDX_RST, command.cmd, 0x4 // Check zero queue bit
+    QBBC    PROC_CMD, command.cmd, 2 // Check zero queue bit
     LDI     CMD_OFF, 0
 SKIP_IDX_RST:
-    QBNE    PROC_CMD, command.cmd, 0x1
-// Turn off enable
+    JMP     PROC_CMD
+DONE:
     SET     r30, r30, X_ENABLE
     SET     r30, r30, Y_ENABLE
     SET     r30, r30, Z_ENABLE
-DONE:
-    HALT
+    JMP     POLL_FOR_START

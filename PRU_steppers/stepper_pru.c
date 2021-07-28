@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdbool.h>
 
 // PRU driver headers
 #include <prussdrv.h>
@@ -13,11 +14,6 @@
 #define ADDR_PRU_DATA_0  0x01C30000
 
 const uint8_t ZERO_QUEUE_BIT = 0x4;
-
-enum {
-    CMD_GO = 0x0,
-    CMD_SHUTDOWN = 0x1,
-};
 
 typedef struct {
     uint32_t x_period;
@@ -43,6 +39,7 @@ void wait_for_event() {
     unsigned int event = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
     if (last_evt_code == NO_EVT_CODE) {
+        printf("Starting event is %d\n",event);
         cmds_outstanding--;
         cmds_processed++;
     } else {
@@ -50,26 +47,25 @@ void wait_for_event() {
         cmds_outstanding -= diff;
         cmds_processed += diff;
         if (diff != 1) {
-            printf("%d events missed\n",diff);
+            printf("### %d events missed\n",diff);
         }
     }
-    printf("got event; oustanding events %d, processed events %d, queue offset %d\n",
-            cmds_outstanding, cmds_processed, queue_idx);
     last_evt_code = event;
 }
 
 void enque(Command* cmd) {
-    while (cmds_outstanding > 10) wait_for_event();
+    while (cmds_outstanding > 8) wait_for_event();
     cmd->cmd &= ~ZERO_QUEUE_BIT;
-    // tell to loop back to 0
-    if (queue_idx == (queue_len-1)) { cmd->cmd |= ZERO_QUEUE_BIT; } 
-    printf("Writing command to offset %d\n", queue_idx*sizeof(Command));
-    prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, queue_idx * sizeof(Command)/sizeof(uint32_t),
+    bool zero_queue = (queue_idx >= queue_len - 2);
+    if (zero_queue) {
+        printf("(zero queue) ");
+        cmd->cmd |= ZERO_QUEUE_BIT;
+    } 
+    const unsigned int CommandSzInWords = 5;
+    int written = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, queue_idx * CommandSzInWords,
         (uint32_t*)cmd, sizeof(Command));
-    queue_idx++;
-    if (cmd->cmd & ZERO_QUEUE_BIT) {
-        queue_idx = 0;
-    }
+    printf("command queued at %d (%d words)\n",queue_idx,written);
+    queue_idx = zero_queue?0:queue_idx+1;
     cmds_outstanding++;
 }
 
@@ -110,36 +106,22 @@ void stop() {
     
 
 int main(int argc, char** argv) {
-    Command command;
     int argidx = 1;
-    command.x_period = 10000;
-    command.y_period = 21000;
-    command.z_period = 32000;
-    command.end_tick = 80000000;
-    command.direction = 0x07;
-    command.enable = 0x07;
-    command.cmd = 0x00;
-
     while (argidx < argc) {
         if (strncmp(argv[argidx],"-d",2) == 0) {
             argidx++;
             if (argc == argidx) return -1;
-            command.direction = atoi(argv[argidx++]);
+            //command.direction = atoi(argv[argidx++]);
         }
         else if (strncmp(argv[argidx],"-e",2) == 0) {
             argidx++;
             if (argc == argidx) return -1;
-            command.enable = atoi(argv[argidx++]);
+            //command.enable = atoi(argv[argidx++]);
         } else {
             printf("Unrecognized argument %s\n",argv[argidx]);
             return -1;
         }
     }
-
-
-
-    printf("Direction flags == %x\n",command.direction);
-    printf("Enable flags == %x\n",command.enable);
 
     tpruss_intc_initdata pruss_intc_initdata = PRUSS_INTC_INITDATA;
 	
@@ -150,27 +132,26 @@ int main(int argc, char** argv) {
     }
     // Initialize interrupts
     prussdrv_pruintc_init(&pruss_intc_initdata);
-    enque(&command);
-    command.direction ^= 0x7;
-    enque(&command);
-    command.direction ^= 0x7;
-
 
     // Run PRU program
     prussdrv_exec_program(WHICH_PRU, "./stepper_pru.bin");
 
-    for (int i = 0; i < 20; i++) {
+    move_rel_xy_time( 0, -4000, 80000000 );
+    move_rel_xy_time( -4000, 0, 80000000 );
+    prussdrv_pru_send_event (ARM_PRU0_INTERRUPT);
+    for (int i = 0; i < 12; i++) {
+        printf("*** SQUARE START ***\n");
         move_rel_xy_time( 0, 4000, 80000000 );
         move_rel_xy_time( 4000, 0, 80000000 );
         move_rel_xy_time( 0, -4000, 80000000 );
         move_rel_xy_time( -4000, 0, 80000000 );
     }
-    command.cmd = 0x1;
-    enque(&command);
+    stop();
 
     while (cmds_outstanding > 0) {
         wait_for_event();
-        printf("one complete\n");
+        printf("event; oustanding events %d, processed events %d, queue offset %d\n",
+                cmds_outstanding, cmds_processed, queue_idx);
     }
 
     printf("SUMMARY: oustanding events %d, processed events %d, queue offset %d\n",
