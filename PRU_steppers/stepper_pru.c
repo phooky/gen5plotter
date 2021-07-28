@@ -68,13 +68,12 @@ void enqueue(Command* cmd) {
     cmd->cmd &= ~ZERO_QUEUE_BIT;
     bool zero_queue = (queue_idx >= queue_len - 2);
     if (zero_queue) {
-        printf("(zero queue) ");
         cmd->cmd |= ZERO_QUEUE_BIT;
     } 
     const unsigned int CommandSzInWords = 5;
     int written = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, queue_idx * CommandSzInWords,
         (uint32_t*)cmd, sizeof(Command));
-    printf("command queued at %d (%d words)\n",queue_idx,written);
+    //printf("command queued at %d (%d words)\n",queue_idx,written);
     queue_idx = zero_queue?0:queue_idx+1;
     cmds_outstanding++;
 }
@@ -222,11 +221,10 @@ int main(int argc, char** argv) {
     prussdrv_exec_program(WHICH_PRU, "./stepper_pru.bin");
 
     for (int i = 0; i < 12; i++) {
-        printf("*** SQUARE START ***\n");
-        move_rel_xy_time( 0, 4000, 80000000 );
-        move_rel_xy_time( 4000, 0, 80000000 );
-        move_rel_xy_time( 0, -4000, 80000000 );
-        move_rel_xy_time( -4000, 0, 80000000 );
+        move_relative_xy( 0, 50, 150 );
+        move_relative_xy( 50, 0, 150 );
+        move_relative_xy( 0, -50, 150 );
+        move_relative_xy( -50, 0, 150 );
     }
     stop();
 
