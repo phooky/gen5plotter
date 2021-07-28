@@ -199,7 +199,12 @@ void stop() {
 /**
  * Wait until current queue is completely processed.
  */
-void wait_for_completion();
+void wait_for_completion() {
+    while (cmds_outstanding > 0) {
+        wait_for_event();
+    }
+}
+
     
 
 int main(int argc, char** argv) {
@@ -242,11 +247,7 @@ int main(int argc, char** argv) {
     }
     stop();
 
-    while (cmds_outstanding > 0) {
-        wait_for_event();
-        printf("event; oustanding events %d, processed events %d, queue offset %d\n",
-                cmds_outstanding, cmds_processed, queue_idx);
-    }
+    wait_for_completion();
 
     printf("SUMMARY: oustanding events %d, processed events %d, queue offset %d\n",
             cmds_outstanding, cmds_processed, queue_idx);
