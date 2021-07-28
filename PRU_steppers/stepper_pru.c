@@ -208,23 +208,6 @@ void wait_for_completion() {
     
 
 int main(int argc, char** argv) {
-    int argidx = 1;
-    while (argidx < argc) {
-        if (strncmp(argv[argidx],"-d",2) == 0) {
-            argidx++;
-            if (argc == argidx) return -1;
-            //command.direction = atoi(argv[argidx++]);
-        }
-        else if (strncmp(argv[argidx],"-e",2) == 0) {
-            argidx++;
-            if (argc == argidx) return -1;
-            //command.enable = atoi(argv[argidx++]);
-        } else {
-            printf("Unrecognized argument %s\n",argv[argidx]);
-            return -1;
-        }
-    }
-
     tpruss_intc_initdata pruss_intc_initdata = PRUSS_INTC_INITDATA;
 	
     prussdrv_init();		
