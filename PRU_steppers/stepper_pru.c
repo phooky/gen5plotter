@@ -14,6 +14,7 @@
 
 const uint8_t ZERO_QUEUE_BIT = 0x4;
 
+// Command structure that is sent to the PRU.
 typedef struct {
     uint32_t x_period;
     uint32_t y_period;
@@ -220,11 +221,10 @@ int main(int argc, char** argv) {
     // Run PRU program
     prussdrv_exec_program(WHICH_PRU, "./stepper_pru.bin");
 
-    for (int i = 0; i < 12; i++) {
-        move_relative_xy( 0, 50, 150 );
-        move_relative_xy( 50, 0, 150 );
-        move_relative_xy( 0, -50, 150 );
-        move_relative_xy( -50, 0, 150 );
+    float x_in, y_in, v_in;
+    while (scanf("%f %f %f\n",&x_in,&y_in,&v_in) != EOF) {
+        move_xy(x_in,y_in,v_in);
+        printf("X %f Y %f - V %f\n",x_in,y_in,v_in);
     }
     stop();
 
