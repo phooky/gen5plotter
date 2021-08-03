@@ -1,6 +1,7 @@
 m3_head_clearance = 5.3;
 m3_screw_clearance = 3.2;
 $fn=30;
+filament_clearance_d = 1.82;
 
 module m3_bolt(bolt_len) {
     head_len=5;
@@ -42,8 +43,7 @@ module simple_penholder(inner_d) {
         cube([th*1.5,inner_d*2,upper_clearance*2 + 1.0],center=true);
     }
 }
-    
-    
+  
 
 module support(support_th) {
     difference() {
@@ -57,7 +57,29 @@ module support(support_th) {
     }
 }
 
+filament_clearance_d = 1.80;
+hinge_clearance=1;
+hinge_d = 4;
+hinge_width=16;
+
+module hinge_a() {
+    width=hinge_width;
+    axis_to_face = hinge_d/2 + hinge_clearance;
+    translate([0,0,axis_to_face])
+    rotate(90, [0,1,0]) 
+    difference() {
+        union() {
+            cylinder(d=hinge_d, h=width, center=true);
+            translate([axis_to_face/2,0,0])
+            cube([axis_to_face,hinge_d,width],center=true);
+        }
+        cylinder(d=filament_clearance_d, h=100, center=true);
+    }
     
-support(3);
-rotate(-90,[1,0,0])
-translate([0,-2.9,0]) simple_penholder(15);
+}
+    
+support(2.5);
+translate([0,0,2.49])
+hinge_a();
+//rotate(-90,[1,0,0])
+//translate([0,-2.9,0]) simple_penholder(15);
