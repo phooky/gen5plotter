@@ -16,7 +16,7 @@ OBJS = stepper_pru.o
 
 .SUFFIXES: 
 
-all: $(PRU_BINS) $(TARGET) 
+all: $(PRU_BINS) $(TARGET) test_gpio
 
 
 %.bin: %.p
@@ -26,6 +26,9 @@ all: $(PRU_BINS) $(TARGET)
 	$(CCTOOLS) $(CFLAGS) -c -o $@ $< 
 
 $(TARGET): $(OBJS) $(LIBDIR_APP_LOADER)/libprussdrv.a
+	$(CCTOOLS) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
+
+test_gpio: test_gpio.o
 	$(CCTOOLS) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
 
 .PHONY: clean
