@@ -34,4 +34,4 @@ test_gpio: test_gpio.o
 .PHONY: clean
 
 clean:
-	rm -f $(PRU_BINS) $(OBJS) $(TARGET)
+	rm -f $(PRU_BINS) $(OBJS) $(TARGET) gpio_test
