@@ -13,7 +13,6 @@ void setpin(int pinno, int value) {
     FILE *ioval;
     char buf[1024];
     sprintf(buf,"/sys/class/gpio/gpio%d/value",pinno);
-    printf("opening %s for %d\n",buf,value);
     ioval = fopen(buf, "w");
     fseek(ioval,0,SEEK_SET);
     fprintf(ioval,"%d",value);
@@ -25,20 +24,16 @@ int main(int argc, char** argv) {
     char buf[1024];
     int outpin = CH_RSV0;
 
-    fprintf(stdout,"start\n");
-    return 0;
     io = fopen("/sys/class/gpio/export", "w");
     fseek(io,0,SEEK_SET);
     fprintf(io,"%d",outpin);
     fflush(io);
 
-    printf("did export\n");
     sprintf(buf,"/sys/class/gpio/gpio%d/direction",outpin);
     iodir = fopen(buf, "w");
     fseek(iodir,0,SEEK_SET);
     fprintf(iodir,"out");
     fflush(iodir);
-    printf("did dir\n");
 
     while(1)
     {

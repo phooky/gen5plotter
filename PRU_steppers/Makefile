@@ -29,7 +29,7 @@ $(TARGET): $(OBJS) $(LIBDIR_APP_LOADER)/libprussdrv.a
 	$(CCTOOLS) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
 
 test_gpio: test_gpio.o
-	$(CCTOOLS) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
+	$(CCTOOLS) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
 .PHONY: clean
 
