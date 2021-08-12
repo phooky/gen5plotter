@@ -1,0 +1,19 @@
+
+// Addresses for GPIO manipulation registers on the AM1808. Not everything
+// needs to be via R30.
+// Unly bothering with the ones we are likely to use.
+
+#define GPIO_BASE 0x01E26000
+
+#define GPIO01_BASE (GPIO_BASE + 0x10)
+#define GPIO23_BASE (GPIO_BASE + 0x38)
+#define GPIO45_BASE (GPIO_BASE + 0x60)
+#define GPIO67_BASE (GPIO_BASE + 0x88)
+#define GPIO8_BASE  (GPIO_BASE + 0xB0)
+
+#define DIR_OFF 0x0
+#define OUT_OFF 0x4
+#define SET_OFF 0x8
+#define CLR_OFF 0xC
+
+

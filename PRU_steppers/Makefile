@@ -11,7 +11,7 @@ CFLAGS+= -Wall -I$(INCDIR_APP_LOADER) -D__DEBUG -O2 -mtune=arm926ej-s -march=arm
 LDFLAGS+=-L$(LIBDIR_APP_LOADER) -lprussdrv -lpthread -lm -static-libgcc -static
 TARGET=stepper_pru
 
-PRU_BINS = stepper_pru.bin
+PRU_BINS = stepper_pru.bin servo.bin
 OBJS = stepper_pru.o 
 
 .SUFFIXES: 
