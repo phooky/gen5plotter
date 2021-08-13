@@ -10,7 +10,8 @@
 #include <pruss_intc_mapping.h>
 
 
-#define WHICH_PRU  		 0
+#define STEPPER_PRU     0
+#define TOOLHEAD_PRU    1
 
 const uint8_t ZERO_QUEUE_BIT = 0x4;
 
@@ -218,8 +219,9 @@ int main(int argc, char** argv) {
     // Initialize interrupts
     prussdrv_pruintc_init(&pruss_intc_initdata);
 
-    // Run PRU program
-    prussdrv_exec_program(WHICH_PRU, "./stepper_pru.bin");
+    // Run PRU programs
+    prussdrv_exec_program(TOOLHEAD_PRU, "./servo.bin");
+    prussdrv_exec_program(STEPPER_PRU, "./stepper_pru.bin");
 
     float x_in, y_in, v_in;
     while (scanf("%f %f %f\n",&x_in,&y_in,&v_in) != EOF) {
@@ -233,7 +235,8 @@ int main(int argc, char** argv) {
     printf("SUMMARY: oustanding events %d, processed events %d, queue offset %d\n",
             cmds_outstanding, cmds_processed, queue_idx);
 
-    prussdrv_pru_disable(WHICH_PRU);
+    prussdrv_pru_disable(STEPPER_PRU);
+    prussdrv_pru_disable(TOOLHEAD_PRU);
     prussdrv_exit ();
 	
     return 0;
