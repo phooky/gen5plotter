@@ -220,7 +220,7 @@ int main(int argc, char** argv) {
     prussdrv_pruintc_init(&pruss_intc_initdata);
 
     // Run PRU programs
-    prussdrv_exec_program(TOOLHEAD_PRU, "./servo.bin");
+    prussdrv_exec_program(TOOLHEAD_PRU, "./servo_pru.bin");
     prussdrv_exec_program(STEPPER_PRU, "./stepper_pru.bin");
 
     float x_in, y_in, v_in;
