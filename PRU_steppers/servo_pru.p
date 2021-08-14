@@ -36,20 +36,7 @@
 #define GPIO_BANK_BASE GPIO45_BASE
 #define GPIO_PIN (16 + 5)
 
-// Disable counter, store zero, and restart counter
-.macro reset_time
-    LBBO    &r0, REG_BASE, 0, 4
-    CLR     r0, r0, 3
-    SBBO    &r0, REG_BASE, 0, 4
-    LDI     r1, 0
-    SBBO    &r1, REG_BASE, 0xc, 4
-    SET     r0, r0, 3
-    SBBO    &r0, REG_BASE, 0, 4
-.endm
-
-.macro get_time
-    LBBO    &TIME, REG_BASE, 0xC, 4
-.endm
+#include "tick_macros.hp"
 
 .macro LDI32
 .mparam dst, imm

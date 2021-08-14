@@ -1,9 +1,5 @@
-//
-// It is 2021 and I am writing PRU code to drive steppers. Again.
-// This is like, what, the third time now?
-//
 
-// 
+
 // Axis structure. Mask is static at start time,
 // other fields are updated per-command.
 // 12 bytes / 3 registers.
@@ -16,10 +12,11 @@
 //
 // Command structure.
 //
-// Flags:
+// Commands:
 // 0x01 - halt until next signal
 // 0x02 - reset command queue offset
 // 0x04 - halt PRU
+// 0x08 - toolhead command 
 .struct Command
     .u32 x_period
     .u32 y_period
@@ -37,9 +34,6 @@
 
 #define PRU0_ARM_INTERRUPT  34
 
-#define CMD_OFF r16.w0 
-#define TIME r18
-#define REG_BASE r17
 #define EN_MASK (1 << X_ENABLE) | (1 << Y_ENABLE) | (1 << Z_ENABLE)
 #define DIR_MASK (1 << X_DIR) | (1 << Y_DIR) | (1 << Z_DIR)
 #define DIR_EN_MASK (0xffffffff ^ (DIR_MASK | EN_MASK))
@@ -48,23 +42,12 @@
 .assign Axis, r6, *, xaxis
 .assign Axis, r9, *, yaxis
 .assign Axis, r12, *, zaxis
-
+#define CMD_OFF r16.w0 
+#define REG_BASE r17
+#define TIME r18
 .assign Command, r20, *, command
 
-// Disable counter, store zero, and restart counter
-.macro reset_time
-    LBBO    &r0, REG_BASE, 0, 4
-    CLR     r0, r0, 3
-    SBBO    &r0, REG_BASE, 0, 4
-    LDI     r1, 0
-    SBBO    &r1, REG_BASE, 0xc, 4
-    SET     r0, r0, 3
-    SBBO    &r0, REG_BASE, 0, 4
-.endm
-
-.macro get_time
-    LBBO    &TIME, REG_BASE, 0xC, 4
-.endm
+#include "tick_macros.hp"
 
 .macro copy_bit 
 .mparam from_reg, from_bit, to_reg, to_bit
