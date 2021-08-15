@@ -1,5 +1,7 @@
 CCTOOLS?=arm-linux-gnueabi-gcc
 PRUDIR?=../pru_sw
+DEPLOY_TO?=gen5:/var/scratch/PRU_steppers
+SCP?=scp
 
 LIBDIR_APP_LOADER?=$(PRUDIR)/app_loader/lib
 INCDIR_APP_LOADER?=$(PRUDIR)/app_loader/include
@@ -26,7 +28,10 @@ all: $(PRU_BINS) $(TARGET)
 $(TARGET): $(OBJS) $(PRU_BINS) $(LIBDIR_APP_LOADER)/libprussdrv.a
 	$(CCTOOLS) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
 
-.PHONY: clean
+.PHONY: clean deploy
+
+deploy: $(TARGET) $(PRU_BINS)
+	$(SCP) $^ $(DEPLOY_TO)
 
 clean:
 	rm -f $(PRU_BINS) $(OBJS) $(TARGET) 

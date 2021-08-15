@@ -44,10 +44,12 @@
 // Command structure.
 // 20 bytes / 5 registers. 
 // Commands: (TODO can we decide if these are all flags or not?)
+// 0x00 - stepper movement command
+// 0x02 - stepper movement command + reset command queue offset
 // 0x01 - halt until next signal
 // 0x02 - reset command queue offset
 // 0x04 - halt PRU
-// 0x08 - toolhead command 
+// 0x08 - toolhead command
 .struct Command
     .u32 x_period    // The number of ticks between X step pin toggles
     .u32 y_period    // The number of ticks between Y step pin toggles
@@ -159,7 +161,6 @@ ENDCHK:
     ADD     CMD_OFF, CMD_OFF, 20
     QBBC    PROC_CMD, command.cmd, 2 // Check zero queue bit
     LDI     CMD_OFF, 0
-SKIP_IDX_RST:
     JMP     PROC_CMD
 DONE:
     SET     r30, r30, X_ENABLE
