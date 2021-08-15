@@ -117,6 +117,11 @@ POLL_FOR_START:
 PROC_CMD:
     reset_time
     LBCO    &command, c3, CMD_OFF, 20
+    // Update CMD_OFF
+    ADD     CMD_OFF, CMD_OFF, 20
+    QBBC    SKIP_ZERO_OFF, command.cmd, 2 // Check zero queue bit
+    LDI     CMD_OFF, 0
+SKIP_ZERO_OFF:
     // Let host know that command has been read
     MOV     R31.b0, #PRU0_ARM_INTERRUPT
     // Check for end state
@@ -158,9 +163,6 @@ ZCHK:
     ADD     zaxis.next_tick, zaxis.next_tick, zaxis.period
 ENDCHK:
     QBGT    STEP_LOOP, TIME, END_TICK
-    ADD     CMD_OFF, CMD_OFF, 20
-    QBBC    PROC_CMD, command.cmd, 2 // Check zero queue bit
-    LDI     CMD_OFF, 0
     JMP     PROC_CMD
 DONE:
     SET     r30, r30, X_ENABLE
