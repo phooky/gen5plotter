@@ -61,6 +61,8 @@
     .u8  reserved    // Padding
 .ends
 
+#define CmdSz 20
+
 #include "stepper_pins.hp"
 
 #define PRU0_ARM_INTERRUPT  34
@@ -116,9 +118,9 @@ POLL_FOR_START:
     
 PROC_CMD:
     reset_time
-    LBCO    &command, c3, CMD_OFF, 20
+    LBCO    &command, c3, CMD_OFF, CmdSz
     // Update CMD_OFF
-    ADD     CMD_OFF, CMD_OFF, 20
+    ADD     CMD_OFF, CMD_OFF, CmdSz
     QBBC    SKIP_ZERO_OFF, command.cmd, 2 // Check zero queue bit
     LDI     CMD_OFF, 0
 SKIP_ZERO_OFF:
