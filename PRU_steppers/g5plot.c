@@ -244,7 +244,7 @@ tpruss_intc_initdata interrupt_controller_setup = {
 
 
 int main(int argc, char** argv) {
-    tpruss_intc_initdata pruss_intc_initdata = PRUSS_INTC_INITDATA;
+    tpruss_intc_initdata pruss_intc_initdata = interrupt_controller_setup;
 	
     prussdrv_init();		
     if (prussdrv_open(PRU_EVTOUT_0)) { 
