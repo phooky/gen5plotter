@@ -43,13 +43,10 @@
 
 // Command structure.
 // 20 bytes / 5 registers. 
-// Commands: (TODO can we decide if these are all flags or not?)
-// 0x00 - stepper movement command
-// 0x02 - stepper movement command + reset command queue offset
-// 0x01 - halt until next signal
-// 0x02 - reset command queue offset
-// 0x04 - halt PRU
-// 0x08 - toolhead command
+// Command flags:
+// bit 0 - halt motion and wait for next interrupt
+// bit 2 - reset queue offset
+// bit 3 - send toolhead command byte and interrupt
 .struct Command
     .u32 x_period    // The number of ticks between X step pin toggles
     .u32 y_period    // The number of ticks between Y step pin toggles
@@ -58,8 +55,12 @@
     .u8  direction   // Direction bit for each axis (bit 0 = X, bit 1 = Y, bit 2 = Z)
     .u8  enable      // Enable bit for each axis (bit 0 = X, bit 1 = Y, bit 2 = Z)
     .u8  cmd         // The type of command to execute, see table
-    .u8  reserved    // Padding
+    .u8  toolhead    // Toolhead command information
 .ends
+
+#define CFL_WAIT        0
+#define CFL_RST_QUEUE   2
+#define CFL_TOOLHEAD    3
 
 #define CmdSz 20
 
@@ -121,13 +122,16 @@ PROC_CMD:
     LBCO    &command, c3, CMD_OFF, CmdSz
     // Update CMD_OFF
     ADD     CMD_OFF, CMD_OFF, CmdSz
-    QBBC    SKIP_ZERO_OFF, command.cmd, 2 // Check zero queue bit
+    QBBC    SKIP_ZERO_OFF, command.cmd, CFL_RST_QUEUE // Check zero queue bit
     LDI     CMD_OFF, 0
 SKIP_ZERO_OFF:
+    QBBC    SKIP_TOOLHEAD, command.cmd, CFL_TOOLHEAD // Check toolhead cmd bit
+    // toolhead code here
+SKIP_TOOLHEAD:
     // Let host know that command has been read
     MOV     R31.b0, #PRU0_ARM_INTERRUPT
     // Check for end state
-    QBBS    DONE, command.cmd, 0
+    QBBS    DONE, command.cmd, CFL_WAIT
     // Load command
     MOV     xaxis.period, command.x_period
     LSR     xaxis.next_tick, xaxis.period, 1

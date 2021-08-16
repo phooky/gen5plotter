@@ -13,8 +13,6 @@
 #define STEPPER_PRU     0
 #define TOOLHEAD_PRU    1
 
-const uint8_t ZERO_QUEUE_BIT = 0x4;
-
 // Command structure that is sent to the PRU.
 typedef struct {
     uint32_t x_period;
@@ -24,8 +22,14 @@ typedef struct {
     uint8_t direction;
     uint8_t enable;
     uint8_t cmd;
-    uint8_t reserved;
+    uint8_t toolhead;
 } __attribute__((packed,aligned(4))) Command;
+
+enum {
+    CFL_WAIT = 0,
+    CFL_RST_QUEUE = 2,
+    CFL_TOOLHEAD = 3,
+};
 
 const uint32_t NO_EVT_CODE = 0xffffffff;
 uint8_t cmds_outstanding = 0;
@@ -67,10 +71,10 @@ void wait_for_event() {
 
 void enqueue(Command* cmd) {
     while (cmds_outstanding > 8) wait_for_event();
-    cmd->cmd &= ~ZERO_QUEUE_BIT;
+    cmd->cmd &= ~(1 << CFL_RST_QUEUE);
     bool zero_queue = (queue_idx >= queue_len - 2);
     if (zero_queue) {
-        cmd->cmd |= ZERO_QUEUE_BIT;
+        cmd->cmd |= 1 << CFL_RST_QUEUE;
     } 
     const unsigned int CommandSzInWords = 5;
     int written = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, queue_idx * CommandSzInWords,
@@ -192,7 +196,7 @@ void set_here_as_home() {
 void stop() {
     Command cmd;
     cmd.enable = 0x0;
-    cmd.cmd = 0x01;
+    cmd.cmd = 1 << CFL_WAIT;
     cmd.end_tick = 200;
     enqueue(&cmd);
 }
@@ -206,7 +210,38 @@ void wait_for_completion() {
     }
 }
 
-    
+
+tpruss_intc_initdata interrupt_controller_setup = {
+    // System events to be enabled. 
+    .sysevts_enabled = {
+        PRU0_PRU1_INTERRUPT, // Inter-PRU
+        PRU1_PRU0_INTERRUPT, 
+        PRU0_ARM_INTERRUPT,  // PRU-to-ARM
+        PRU1_ARM_INTERRUPT, 
+        ARM_PRU0_INTERRUPT,  // ARM-to-PRU
+        ARM_PRU1_INTERRUPT,
+        -1, },
+    // Map system events to each channel in the INTC.
+    .sysevt_to_channel_map = {
+        { PRU0_PRU1_INTERRUPT, 1 },
+        { PRU1_PRU0_INTERRUPT, 0 },
+        { PRU0_ARM_INTERRUPT,  2 },
+        { PRU1_ARM_INTERRUPT,  3 },
+        { ARM_PRU0_INTERRUPT,  0 },
+        { ARM_PRU1_INTERRUPT,  1 },
+        { -1, -1 }, },
+    // Mapping from channels to host interrupts.
+    .channel_to_host_map = {
+        { 0, PRU0 },
+        { 1, PRU1 },
+        { 2, PRU_EVTOUT0 },
+        { 3, PRU_EVTOUT1 },
+        { -1, -1 }, },
+    // Host interrupts to enable
+    .host_enable_bitmask = 
+        PRU0_HOSTEN_MASK | PRU1_HOSTEN_MASK | PRU_EVTOUT0_HOSTEN_MASK | PRU_EVTOUT1_HOSTEN_MASK,
+};
+
 
 int main(int argc, char** argv) {
     tpruss_intc_initdata pruss_intc_initdata = PRUSS_INTC_INITDATA;
