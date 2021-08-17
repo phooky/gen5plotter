@@ -76,16 +76,25 @@ START:
     // Wait for a toolhead setting to begin
 POLL_FOR_START:
     QBBC    POLL_FOR_START, r31, 31
-CLEAR_INTERRUPT:
-    //LDI     r1, 0x01
-    //LDI     r2, 0x284
-    //SBCO    r1, c0, r2, 4
-    //LDI     r2, 0x384
-    //SBCO    r1, c0, r2, 4
+    // Load tool setting
+    LBCO    &TOOL_VAL.b0, c3, 0, 1
+    // Clear interrupt #32
+    LDI     r1, 0x01
+    LDI     r2, 0x284
+    SBCO    r1, c0, r2, 4
 SET_PIN:
     reset_time
     // Set pin
     SBBO    &PIN_MASK, IO_BASE, SET_OFF, 4
+    // Check for updated value
+    QBBC    SKIP_UPDATE, r31, 31
+    // Load tool setting
+    LBCO    &TOOL_VAL.b0, c3, 0, 1
+    // Clear interrupt #32
+    LDI     r1, 0x01
+    LDI     r2, 0x284
+    SBCO    r1, c0, r2, 4
+SKIP_UPDATE:
     // Compute duty tick increment
     // 780 = 2^9 + 2^8 + 2^3 + 2^2
     LSL     DUTY_TICKS, TOOL_VAL, 2
@@ -96,7 +105,7 @@ SET_PIN:
     LSL     r0, TOOL_VAL, 9
     ADD     DUTY_TICKS, DUTY_TICKS, r0
     // Add minimum ticks
-    ADD     DUTY_TICKS, MIN_DUTY_TICKS
+    ADD     DUTY_TICKS, DUTY_TICKS, MIN_DUTY_TICKS
 
 WAIT_FOR_CLR:
     get_time
