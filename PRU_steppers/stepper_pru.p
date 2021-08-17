@@ -115,12 +115,14 @@ POLL_FOR_START:
     LDI     r1, 0x01
     LDI     r2, 0x284
     SBCO    r1, c0, r2, 4
-    LDI     r2, 0x384
-    SBCO    r1, c0, r2, 4
+    //LDI     r2, 0x384
+    //SBCO    r1, c0, r2, 4
     
 PROC_CMD:
     reset_time
     LBCO    &command, c3, CMD_OFF, CmdSz
+    // Let host know that command has been read
+    MOV     R31.b0, #PRU0_ARM_INTERRUPT
     // Update CMD_OFF
     ADD     CMD_OFF, CMD_OFF, CmdSz
     QBBC    SKIP_ZERO_OFF, command.cmd, CFL_RST_QUEUE // Check zero queue bit
@@ -128,10 +130,8 @@ PROC_CMD:
 SKIP_ZERO_OFF:
     QBBC    SKIP_TOOLHEAD, command.cmd, CFL_TOOLHEAD // Check toolhead cmd bit
     // toolhead code here
-    MOV     r31, #PRU0_PRU1_INTERRUPT
+    MOV     r31.b0, #PRU0_PRU1_INTERRUPT
 SKIP_TOOLHEAD:
-    // Let host know that command has been read
-    MOV     R31.b0, #PRU0_ARM_INTERRUPT
     // Check for end state
     QBBS    DONE, command.cmd, CFL_WAIT
     // Load command

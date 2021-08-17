@@ -181,6 +181,19 @@ void dwell(float time) {
     move_rel_xy_time(0,0,time_in_ticks);
 }
 
+void toolhead(int parameter) {
+    Command cmd;
+    cmd.cmd = 1 << CFL_TOOLHEAD;
+    cmd.toolhead = parameter & 0xff;
+    cmd.end_tick = 500;
+    cmd.enable = 0x4;
+    cmd.direction = 0x1;
+    cmd.z_period = 0x7fffffff;
+    cmd.x_period = 0x7fffffff;
+    cmd.y_period = 0x7fffffff;
+    enqueue(&cmd);
+}
+
 
 /**
  * Set bot's idea of home (0,0).
@@ -258,10 +271,21 @@ int main(int argc, char** argv) {
     prussdrv_exec_program(TOOLHEAD_PRU, "./servo_pru.bin");
     prussdrv_exec_program(STEPPER_PRU, "./stepper_pru.bin");
 
-    float x_in, y_in, v_in;
-    while (scanf("%f %f %f\n",&x_in,&y_in,&v_in) != EOF) {
-        move_xy(x_in,y_in,v_in);
-        printf("X %f Y %f - V %f\n",x_in,y_in,v_in);
+    int cmd;
+    while ((cmd = getchar()) != EOF) {
+        if (cmd == 'M') {
+            float x_in, y_in, v_in;
+            if (scanf("%f %f %f\n",&x_in,&y_in,&v_in) != EOF) {
+                move_xy(x_in,y_in,v_in);
+                printf("Move to X %f Y %f - V %f\n",x_in,y_in,v_in);
+            }
+        } else if (cmd == 'T') {
+            int th;
+            if (scanf("%d\n",&th) != EOF) {
+                toolhead(th);
+                printf("Sending %d to toolhead\n",th);
+            }
+        }
     }
     stop();
 
