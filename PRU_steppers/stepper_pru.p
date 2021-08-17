@@ -67,6 +67,7 @@
 #include "stepper_pins.hp"
 
 #define PRU0_ARM_INTERRUPT  34
+#define PRU0_PRU1_INTERRUPT 32
 
 #define EN_MASK (1 << X_ENABLE) | (1 << Y_ENABLE) | (1 << Z_ENABLE)
 #define DIR_MASK (1 << X_DIR) | (1 << Y_DIR) | (1 << Z_DIR)
@@ -127,6 +128,7 @@ PROC_CMD:
 SKIP_ZERO_OFF:
     QBBC    SKIP_TOOLHEAD, command.cmd, CFL_TOOLHEAD // Check toolhead cmd bit
     // toolhead code here
+    MOV     r31, #PRU0_PRU1_INTERRUPT
 SKIP_TOOLHEAD:
     // Let host know that command has been read
     MOV     R31.b0, #PRU0_ARM_INTERRUPT

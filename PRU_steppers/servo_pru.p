@@ -62,10 +62,10 @@ START:
     CLR     r0, r0, GPIO_PIN
     SBBO    &r0, IO_BASE, DIR_OFF, 4
 
-    // Not going to wait for an interrupt at this point
-//POLL_FOR_START:
-    //QBBC    POLL_FOR_START, r31, 31
-    // make sure to update clearing interrupt for PRU1
+    // Wait for a toolhead setting to begin
+POLL_FOR_START:
+    QBBC    POLL_FOR_START, r31, 31
+CLEAR_INTERRUPT:
     //LDI     r1, 0x01
     //LDI     r2, 0x284
     //SBCO    r1, c0, r2, 4
