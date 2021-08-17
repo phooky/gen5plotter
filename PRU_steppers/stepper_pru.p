@@ -130,6 +130,7 @@ PROC_CMD:
 SKIP_ZERO_OFF:
     QBBC    SKIP_TOOLHEAD, command.cmd, CFL_TOOLHEAD // Check toolhead cmd bit
     // toolhead code here
+    SBCO    &command.toolhead, c4, 0, 1
     MOV     r31.b0, #PRU0_PRU1_INTERRUPT
 SKIP_TOOLHEAD:
     // Check for end state
