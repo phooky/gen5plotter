@@ -79,7 +79,9 @@ void enqueue(Command* cmd) {
     const unsigned int CommandSzInWords = 5;
     int written = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, queue_idx * CommandSzInWords,
         (uint32_t*)cmd, sizeof(Command));
-    //printf("command queued at %d (%d words)\n",queue_idx,written);
+    if (written != sizeof(Command)/4) {
+      printf("Unexpected write size %d (expected %d)",written,sizeof(Command)/4);
+    } 
     queue_idx = zero_queue?0:queue_idx+1;
     cmds_outstanding++;
 }
