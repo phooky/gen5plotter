@@ -274,7 +274,12 @@ int main(int argc, char** argv) {
     prussdrv_exec_program(STEPPER_PRU, "./stepper_pru.bin");
 
     int cmd;
-    while ((cmd = getchar()) != EOF) {
+    while (1) {
+	cmd = getchar();
+	if (cmd == EOF) {
+	    clearerr(stdin);
+	    continue;
+	}
         if (cmd == 'M') {
             float x_in, y_in, v_in;
             if (scanf("%f %f %f\n",&x_in,&y_in,&v_in) != EOF) {
