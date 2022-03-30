@@ -277,6 +277,7 @@ int main(int argc, char** argv) {
     while (1) {
 	cmd = getchar();
 	if (cmd == EOF) {
+	    stop();
 	    clearerr(stdin);
 	    continue;
 	}

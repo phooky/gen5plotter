@@ -36,6 +36,7 @@ $(TARGET): $(OBJS) $(PRU_BINS) $(LIBDIR_APP_LOADER)/libprussdrv.a
 .PHONY: clean deploy
 
 deploy: $(TARGET) $(PRU_BINS) $(SCRIPTS)
+	$(SSH) $(PLOTTER) mkdir -p $(DEPLOY_DIR)
 	$(SCP) $^ $(DEPLOY_TO)
 
 start:
