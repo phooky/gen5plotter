@@ -274,21 +274,28 @@ int main(int argc, char** argv) {
     prussdrv_exec_program(STEPPER_PRU, "./stepper_pru.bin");
 
     int cmd;
+    bool stopped = true;
     while (1) {
 	cmd = getchar();
 	if (cmd == EOF) {
-	    stop();
+	    if (!stopped) {
+		stop();
+		printf("Sent stop.\n");
+		stopped = true;
+	    }
 	    clearerr(stdin);
 	    continue;
 	}
         if (cmd == 'M') {
             float x_in, y_in, v_in;
+	    stopped = false;
             if (scanf("%f %f %f\n",&x_in,&y_in,&v_in) != EOF) {
                 move_xy(x_in,y_in,v_in);
                 printf("Move to X %f Y %f - V %f\n",x_in,y_in,v_in);
             }
         } else if (cmd == 'T') {
             int th;
+	    stopped = false;
             if (scanf("%d\n",&th) != EOF) {
                 toolhead(th);
                 printf("Sending %d to toolhead\n",th);
