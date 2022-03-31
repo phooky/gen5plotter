@@ -306,7 +306,8 @@ int main(int argc, char** argv) {
 
     int cmd;
     bool stopped = true;
-    signal(SIGINT, handle_sigint);
+    struct sigaction sa = { .sa_handler = handle_sigint, .sa_flags = 0 };
+    sigaction(SIGINT, &sa, NULL);
     while (not_interrupted) {
 	cmd = getchar();
 	if (cmd == EOF) {
