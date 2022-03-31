@@ -6,6 +6,6 @@ LOGFILE=/var/log/plotter.log
 
 cd /var/scratch/g5plot
 mkfifo ${PLOTTER}
-nohup ./g5plot < ${PLOTTER} > ${LOGFILE} &
+nohup ./g5plot <${PLOTTER} >${LOGFILE} &
 echo $! > ${PIDFILE}
 

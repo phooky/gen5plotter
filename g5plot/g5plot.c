@@ -272,6 +272,14 @@ tpruss_intc_initdata interrupt_controller_setup = {
 };
 
 
+#include <signal.h>
+
+static volatile int not_interrupted = 1;
+void handle_sigint(int dummy) {
+    not_interrupted = 0;
+    printf("Interrupted; shutting down.\n");
+}
+
 int main(int argc, char** argv) {
     tpruss_intc_initdata pruss_intc_initdata = interrupt_controller_setup;
 	
@@ -298,7 +306,8 @@ int main(int argc, char** argv) {
 
     int cmd;
     bool stopped = true;
-    while (1) {
+    signal(SIGINT, handle_sigint);
+    while (not_interrupted) {
 	cmd = getchar();
 	if (cmd == EOF) {
 	    if (!stopped) {
@@ -325,6 +334,7 @@ int main(int argc, char** argv) {
             }
         }
     }
+    printf("Out of main loop.\n");
     stop();
 
     wait_for_completion();
