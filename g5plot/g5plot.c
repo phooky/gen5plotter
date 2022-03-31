@@ -25,10 +25,15 @@ typedef struct {
     uint8_t toolhead;
 } __attribute__((packed,aligned(4))) Command;
 
+const unsigned int CommandSzInWords = 5;
+
 enum {
-    CFL_WAIT = 0,
-    CFL_RST_QUEUE = 2,
-    CFL_TOOLHEAD = 3,
+    CFL_WAIT = 0,        // Tells PRU to wait for an interrupt before continuing.
+    CFL_CMD_READY = 1,   // Indicates that this command is ready for processing.
+                         // If this bit is not set, the PRU will busy wait until it is.
+    CFL_RST_QUEUE = 2,   // Indicates that after this command is executed, the PRU should go
+                         // back to the head of the buffer.
+    CFL_TOOLHEAD = 3,    // Indicates that this command is for the toolhead.
 };
 
 const uint32_t NO_EVT_CODE = 0xffffffff;
@@ -76,12 +81,15 @@ void enqueue(Command* cmd) {
     if (zero_queue) {
         cmd->cmd |= 1 << CFL_RST_QUEUE;
     } 
-    const unsigned int CommandSzInWords = 5;
     int written = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, queue_idx * CommandSzInWords,
         (uint32_t*)cmd, sizeof(Command));
     if (written != sizeof(Command)/4) {
       printf("Unexpected write size %d (expected %d)",written,sizeof(Command)/4);
-    } 
+    }
+    // Set ready bit
+    cmd->cmd |= 1 << CFL_CMD_READY;
+    written = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, queue_idx * CommandSzInWords,
+					(uint32_t*)cmd, 1);
     queue_idx = zero_queue?0:queue_idx+1;
     cmds_outstanding++;
 }
@@ -268,6 +276,15 @@ int main(int argc, char** argv) {
     }
     // Initialize interrupts
     prussdrv_pruintc_init(&pruss_intc_initdata);
+
+    // Clear out command buffer to ensure no accidental commands are run
+    {
+	Command empty_cmd = { 0 };
+	for (int i = 0; i < queue_len; i++) {
+	    prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, i * CommandSzInWords,
+				      (uint32_t*)&empty_cmd, sizeof(Command));
+	}
+    }
 
     // Run PRU programs
     prussdrv_exec_program(TOOLHEAD_PRU, "./servo_pru.bin");

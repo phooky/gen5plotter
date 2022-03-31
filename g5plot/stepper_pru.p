@@ -1,4 +1,4 @@
-//
+// -*- mode: asm; tab-width: 4; -*-
 // STEPPER_PRU.P
 //
 // This code controls the stepper motion and communicates with
@@ -58,7 +58,16 @@
     .u8  toolhead    // Toolhead command information
 .ends
 
+
+// CFL_WAIT -- Tells PRU to wait for an interrupt before continuing.
+// CFL_CMD_READY -- Indicates that this command is ready for processing.
+//     If this bit is not set, the PRU will busy wait until it is.
+// CFL_RST_QUEUE -- Indicates that after this command is executed, the PRU should go
+//     back to the head of the buffer.
+// CFL_TOOLHEAD -- Indicates that this command is for the toolhead.
+
 #define CFL_WAIT        0
+#define CFL_CMD_READY   1
 #define CFL_RST_QUEUE   2
 #define CFL_TOOLHEAD    3
 
@@ -121,6 +130,11 @@ POLL_FOR_START:
 PROC_CMD:
     reset_time
     LBCO    &command, c3, CMD_OFF, CmdSz
+	// Check that the CFL_CMD_READY flag has been set; otherwise, busy wait
+	QBBC	PROC_CMD, command.cmd, CFL_CMD_READY
+	// Clear bit and write back to buffer
+	CLR     command.cmd, CFL_CMD_READY
+	SBCO	&command.cmd, c3, CMD_OFF, 1
     // Let host know that command has been read
     MOV     R31.b0, #PRU0_ARM_INTERRUPT
     // Update CMD_OFF
