@@ -48,12 +48,17 @@ const uint8_t queue_len = 20; // total number of Command entries in queue
 // Check if we're running or not
 bool is_running = false;
 
-// Wait for next event and update oustanding/processed command counts
-void wait_for_event() {
+// Start the PRU if it's not running.
+void start_pru() {
     if (!is_running) {
         prussdrv_pru_send_event (ARM_PRU0_INTERRUPT);
         is_running = true;
     }
+}
+
+// Wait for next event and update oustanding/processed command counts
+void wait_for_event() {
+    start_pru(); // no use waiting if we're stopped!
     unsigned int event = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
     if (last_evt_code == NO_EVT_CODE) {
@@ -91,6 +96,7 @@ void enqueue(Command* cmd) {
     written = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, queue_idx * CommandSzInWords,
 					(uint32_t*)cmd, 1);
     queue_idx = zero_queue?0:queue_idx+1;
+    start_pru();
     cmds_outstanding++;
 }
 
