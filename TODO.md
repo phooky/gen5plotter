@@ -3,6 +3,8 @@
   command has not yet been handled. This will allow us to have proper pipeline stalls, instead
   of the mess I'm currently grappling with.
 
+* QUICK NOTES: not exiting correctly-- hangs on cherchar(), but also wait
+  for completion. Let's review
 
 * [DONE] find penup/pendown solenoid breakout (gowanus connector?)
 * look into homing
