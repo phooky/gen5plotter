@@ -1,10 +1,13 @@
 
-* TODO Proper check for whether a command has been executed; we need a bit to indicate that this
-  command has not yet been handled. This will allow us to have proper pipeline stalls, instead
-  of the mess I'm currently grappling with.
+* TODO Proper check for whether a command has been executed; we need a bit to indicate that this command has not yet been handled. This will allow us to have proper pipeline stalls, instead of the mess I'm currently grappling with.
 
-* QUICK NOTES: not exiting correctly-- hangs on cherchar(), but also wait
-  for completion. Let's review
+* TODO simplify servo PRU design; it should simply run continuously instead of awaiting a signal (with the possible ability to go into "servo off" mode where no pulses are sent)
+  
+
+  
+* DONE QUICK NOTES: not exiting correctly-- hangs on cherchar(), but also wait  for completion. Let's review
+  CLOSED: [2022-03-31 Thu 20:01]
+
 
 * [DONE] find penup/pendown solenoid breakout (gowanus connector?)
 * look into homing

@@ -1,24 +1,7 @@
+// -*- mode: asm; tab-width: 4; -*-
 //
 // SERVO_PRU.P
 //
-
-
-//
-// Command structure.
-//
-// Flags:
-// 0x01 - halt until next signal
-// 0x02 - reset command queue offset
-// 0x04 - halt PRU
-.struct Command
-    .u32 x_period
-    .u32 y_period
-    .u32 z_period
-    .u32 end_tick
-    .u8  direction
-    .u8  enable
-    .u8  cmd
-.ends
 
 // servo pulse: 1-2ms out of 20ms
 // ticks per servo cycle: 2e8 * 2e-2 = 4e6
@@ -73,28 +56,12 @@ START:
     CLR     r0, r0, GPIO_PIN
     SBBO    &r0, IO_BASE, DIR_OFF, 4
 
-    // Wait for a toolhead setting to begin
-POLL_FOR_START:
-    QBBC    POLL_FOR_START, r31, 31
+LOAD_TH_VAL:
     // Load tool setting
     LBCO    &TOOL_VAL.b0, c3, 0, 1
-    // Clear interrupt #32
-    LDI     r1, 0x01
-    LDI     r2, 0x284
-    SBCO    r1, c0, r2, 4
-SET_PIN:
     reset_time
     // Set pin
     SBBO    &PIN_MASK, IO_BASE, SET_OFF, 4
-    // Check for updated value
-    QBBC    SKIP_UPDATE, r31, 31
-    // Load tool setting
-    LBCO    &TOOL_VAL.b0, c3, 0, 1
-    // Clear interrupt #32
-    LDI     r1, 0x01
-    LDI     r2, 0x284
-    SBCO    r1, c0, r2, 4
-SKIP_UPDATE:
     // Compute duty tick increment
     // 780 = 2^9 + 2^8 + 2^3 + 2^2
     LSL     DUTY_TICKS, TOOL_VAL, 2
@@ -116,5 +83,5 @@ WAIT_FOR_CLR:
 WAIT_FOR_SET:
     get_time
     QBGT    WAIT_FOR_SET, TIME, CYCLE_TICKS
-    JMP     SET_PIN
+    JMP     LOAD_TH_VAL
 
