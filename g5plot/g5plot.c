@@ -7,8 +7,6 @@
 
 // PRU driver headers
 #include <prussdrv.h>
-#include <pruss_intc_mapping.h>
-
 
 #define STEPPER_PRU     0
 #define TOOLHEAD_PRU    1
@@ -36,12 +34,9 @@ enum {
     CFL_TOOLHEAD = 3,    // Indicates that this command is for the toolhead.
 };
 
-const uint32_t NO_EVT_CODE = 0xffffffff;
-uint8_t cmds_outstanding = 0;
 uint16_t cmds_processed = 0;
-uint32_t last_evt_code = NO_EVT_CODE;
 
-uint32_t* prumem = NULL;
+uint8_t* prumem = NULL;
 
 // Queue management
 uint8_t queue_idx = 0; // next empty queue slot
@@ -50,26 +45,19 @@ const uint8_t queue_len = 20; // total number of Command entries in queue
 // Check if we're running or not
 bool is_running = false;
 
-// Start the PRU if it's not running.
-void start_pru() {
-    if (!is_running) {
-        prussdrv_pru_send_event (ARM_PRU0_INTERRUPT);
-        is_running = true;
-    }
-}
-
 void enqueue(Command* cmd) {
-    int wordoff = (queue_idx * sizeof(Command)) / 4;
-    Command* prucmd = (Command*)(prumem + wordoff);
-    
-    cmd->cmd &= ~(1 << CFL_RST_QUEUE);
+    int byteoff = queue_idx * sizeof(Command);
+    Command* prucmd = (Command*)(prumem + byteoff);
+    // clear reset flag and ready flag on existing command, just in case
+    cmd->cmd &= ~((1 << CFL_RST_QUEUE) | (1 << CFL_CMD_READY));
+    // zero the queue after this entry if near the end
     bool zero_queue = (queue_idx >= queue_len - 2);
     if (zero_queue) {
         cmd->cmd |= 1 << CFL_RST_QUEUE;
     }
     // wait for empty command space
     while (prucmd->cmd & (1<<CFL_CMD_READY)) {
-	// pass, we should check for timeouts at some point
+	// pass and busy wait, we should check for timeouts at some point
     }
     *prucmd = *cmd;
     // Set ready bit
@@ -208,45 +196,6 @@ void stop() {
     enqueue(&cmd);
 }
 
-/**
- * Wait until current queue is completely processed.
- */
-void wait_for_completion() {
-}
-
-
-tpruss_intc_initdata interrupt_controller_setup = {
-    // System events to be enabled. 
-    .sysevts_enabled = {
-        PRU0_PRU1_INTERRUPT, // Inter-PRU
-        PRU1_PRU0_INTERRUPT, 
-        PRU0_ARM_INTERRUPT,  // PRU-to-ARM
-        PRU1_ARM_INTERRUPT, 
-        ARM_PRU0_INTERRUPT,  // ARM-to-PRU
-        ARM_PRU1_INTERRUPT,
-        -1, },
-    // Map system events to each channel in the INTC.
-    .sysevt_to_channel_map = {
-        { PRU0_PRU1_INTERRUPT, 1 },
-        { PRU1_PRU0_INTERRUPT, 0 },
-        { PRU0_ARM_INTERRUPT,  2 },
-        { PRU1_ARM_INTERRUPT,  3 },
-        { ARM_PRU0_INTERRUPT,  0 },
-        { ARM_PRU1_INTERRUPT,  1 },
-        { -1, -1 }, },
-    // Mapping from channels to host interrupts.
-    .channel_to_host_map = {
-        { 0, PRU0 },
-        { 1, PRU1 },
-        { 2, PRU_EVTOUT0 },
-        { 3, PRU_EVTOUT1 },
-        { -1, -1 }, },
-    // Host interrupts to enable
-    .host_enable_bitmask = 
-        PRU0_HOSTEN_MASK | PRU1_HOSTEN_MASK | PRU_EVTOUT0_HOSTEN_MASK | PRU_EVTOUT1_HOSTEN_MASK,
-};
-
-
 #include <signal.h>
 
 static volatile int not_interrupted = 1;
@@ -256,9 +205,8 @@ void handle_sigint(int dummy) {
 }
 
 int main(int argc, char** argv) {
-    tpruss_intc_initdata pruss_intc_initdata = interrupt_controller_setup;
-	
-    prussdrv_init();		
+    //tpruss_intc_initdata pruss_intc_initdata = interrupt_controller_setup;
+    prussdrv_init();	
     if (prussdrv_open(PRU_EVTOUT_0)) { 
         fprintf(stderr, "Could not open uio%d, aborting\n", PRU_EVTOUT_0);
         return -1;
@@ -266,7 +214,7 @@ int main(int argc, char** argv) {
     fprintf(stderr,"Opened PRU.\n");
     
     // Initialize interrupts
-    prussdrv_pruintc_init(&pruss_intc_initdata);
+    //prussdrv_pruintc_init(&pruss_intc_initdata);
 
     if (prussdrv_map_prumem(PRUSS0_PRU0_DATARAM, (void**) &prumem) != 0) {
 	fprintf(stderr, "Could not map PRU0 data ram! Aborting.\n");
@@ -277,7 +225,7 @@ int main(int argc, char** argv) {
     {
 	const int wordsz = sizeof(Command)*queue_len / 4;
 	for (int i = 0; i < wordsz; i++) {
-	    *(prumem + i) = 0;
+	    *((uint32_t*)prumem + i) = 0;
 	}
     }
 
@@ -286,31 +234,27 @@ int main(int argc, char** argv) {
     prussdrv_exec_program(STEPPER_PRU, "./stepper_pru.bin");
 
     int cmd;
-    bool stopped = true;
     struct sigaction sa = { .sa_handler = handle_sigint, .sa_flags = 0 };
     sigaction(SIGINT, &sa, NULL);
-    start_pru();
+
     while (not_interrupted) {
 	cmd = getchar();
 	if (cmd == EOF) {
-	    if (!stopped) {
-		stop();
-		printf("Sent stop.\n");
-		stopped = true;
-	    }
 	    clearerr(stdin);
 	    continue;
 	}
+	if (cmd == 'Q') {
+	    printf("Explicit shutdown.\n");
+	    not_interrupted = false;
+	}
         if (cmd == 'M') {
             float x_in, y_in, v_in;
-	    stopped = false;
             if (scanf("%f %f %f\n",&x_in,&y_in,&v_in) != EOF) {
                 move_xy(x_in,y_in,v_in);
                 printf("Move to X %f Y %f - V %f\n",x_in,y_in,v_in);
             }
         } else if (cmd == 'T') {
             int th;
-	    stopped = false;
             if (scanf("%d\n",&th) != EOF) {
                 toolhead(th);
                 printf("Sending %d to toolhead\n",th);
@@ -318,12 +262,9 @@ int main(int argc, char** argv) {
         }
     }
     printf("Out of main loop.\n");
-    stop();
-
-    //wait_for_completion();
 
     printf("SUMMARY: oustanding events %d, processed events %d, queue offset %d\n",
-            cmds_outstanding, cmds_processed, queue_idx);
+	   0, cmds_processed, queue_idx);
 
     prussdrv_pru_disable(STEPPER_PRU);
     prussdrv_pru_disable(TOOLHEAD_PRU);
