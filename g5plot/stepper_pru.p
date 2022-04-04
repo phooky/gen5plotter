@@ -118,14 +118,6 @@ START:
     LSL     xaxis.mask, r1, X_STEP
     LSL     yaxis.mask, r1, Y_STEP
     LSL     zaxis.mask, r1, Z_STEP
-POLL_FOR_START:
-    QBBC    POLL_FOR_START, r31, 30
-    // Clear the interrupt
-    LDI     r1, 0x01
-    LDI     r2, 0x284
-    SBCO    r1, c0, r2, 4
-    //LDI     r2, 0x384
-    //SBCO    r1, c0, r2, 4
     
 PROC_CMD:
     reset_time
@@ -145,7 +137,6 @@ SKIP_ZERO_OFF:
     QBBC    SKIP_TOOLHEAD, command.cmd, CFL_TOOLHEAD // Check toolhead cmd bit
     // toolhead code here
     SBCO    &command.toolhead, c4, 0, 1
-    MOV     r31.b0, #PRU0_PRU1_INTERRUPT
 SKIP_TOOLHEAD:
     // Check for end state
     QBBS    DONE, command.cmd, CFL_WAIT
@@ -191,4 +182,4 @@ DONE:
     SET     r30, r30, X_ENABLE
     SET     r30, r30, Y_ENABLE
     SET     r30, r30, Z_ENABLE
-    JMP     POLL_FOR_START
+    JMP     PROC_CMD

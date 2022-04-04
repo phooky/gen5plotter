@@ -41,6 +41,8 @@ uint8_t cmds_outstanding = 0;
 uint16_t cmds_processed = 0;
 uint32_t last_evt_code = NO_EVT_CODE;
 
+uint32_t* prumem = NULL;
+
 // Queue management
 uint8_t queue_idx = 0; // next empty queue slot
 const uint8_t queue_len = 20; // total number of Command entries in queue
@@ -56,48 +58,24 @@ void start_pru() {
     }
 }
 
-// Wait for next event and update oustanding/processed command counts
-void wait_for_event() {
-    start_pru(); // no use waiting if we're stopped!
-    unsigned int event = prussdrv_pru_wait_event(PRU_EVTOUT_0);
-    prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
-    if (last_evt_code == NO_EVT_CODE) {
-        printf("Starting event is %d\n",event);
-        cmds_outstanding--;
-        cmds_processed++;
-    } else {
-        int diff = event - last_evt_code;
-        cmds_outstanding -= diff;
-        cmds_processed += diff;
-        if (diff != 1) {
-            printf("### %d events missed\n",diff);
-        }
-    }
-    if (cmds_outstanding == 0) {
-        is_running = false;
-    }
-    last_evt_code = event;
-}
-
 void enqueue(Command* cmd) {
-    while (cmds_outstanding > 8) wait_for_event();
+    int wordoff = (queue_idx * sizeof(Command)) / 4;
+    Command* prucmd = (Command*)(prumem + wordoff);
+    
     cmd->cmd &= ~(1 << CFL_RST_QUEUE);
     bool zero_queue = (queue_idx >= queue_len - 2);
     if (zero_queue) {
         cmd->cmd |= 1 << CFL_RST_QUEUE;
-    } 
-    int written = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, queue_idx * CommandSzInWords,
-        (uint32_t*)cmd, sizeof(Command));
-    if (written != sizeof(Command)/4) {
-      printf("Unexpected write size %d (expected %d)",written,sizeof(Command)/4);
     }
+    // wait for empty command space
+    while (prucmd->cmd & (1<<CFL_CMD_READY)) {
+	// pass, we should check for timeouts at some point
+    }
+    *prucmd = *cmd;
     // Set ready bit
     cmd->cmd |= 1 << CFL_CMD_READY;
-    written = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, queue_idx * CommandSzInWords,
-					(uint32_t*)cmd, 1);
+    *prucmd = *cmd;
     queue_idx = zero_queue?0:queue_idx+1;
-    start_pru();
-    cmds_outstanding++;
 }
 
 typedef struct { int32_t a; int32_t b; } AB;
@@ -234,9 +212,6 @@ void stop() {
  * Wait until current queue is completely processed.
  */
 void wait_for_completion() {
-    while (cmds_outstanding > 0) {
-        wait_for_event();
-    }
 }
 
 
@@ -288,15 +263,21 @@ int main(int argc, char** argv) {
         fprintf(stderr, "Could not open uio%d, aborting\n", PRU_EVTOUT_0);
         return -1;
     }
+    fprintf(stderr,"Opened PRU.\n");
+    
     // Initialize interrupts
     prussdrv_pruintc_init(&pruss_intc_initdata);
 
+    if (prussdrv_map_prumem(PRUSS0_PRU0_DATARAM, (void**) &prumem) != 0) {
+	fprintf(stderr, "Could not map PRU0 data ram! Aborting.\n");
+	return -1;
+    }
+    
     // Clear out command buffer to ensure no accidental commands are run
     {
-	Command empty_cmd = { 0 };
-	for (int i = 0; i < queue_len; i++) {
-	    prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, i * CommandSzInWords,
-				      (uint32_t*)&empty_cmd, sizeof(Command));
+	const int wordsz = sizeof(Command)*queue_len / 4;
+	for (int i = 0; i < wordsz; i++) {
+	    *(prumem + i) = 0;
 	}
     }
 
@@ -308,6 +289,7 @@ int main(int argc, char** argv) {
     bool stopped = true;
     struct sigaction sa = { .sa_handler = handle_sigint, .sa_flags = 0 };
     sigaction(SIGINT, &sa, NULL);
+    start_pru();
     while (not_interrupted) {
 	cmd = getchar();
 	if (cmd == EOF) {
@@ -338,7 +320,7 @@ int main(int argc, char** argv) {
     printf("Out of main loop.\n");
     stop();
 
-    wait_for_completion();
+    //wait_for_completion();
 
     printf("SUMMARY: oustanding events %d, processed events %d, queue offset %d\n",
             cmds_outstanding, cmds_processed, queue_idx);
