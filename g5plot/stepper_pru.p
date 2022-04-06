@@ -71,7 +71,9 @@
 #define CFL_RST_QUEUE   2
 #define CFL_TOOLHEAD    3
 
-#define CmdSz 20
+#define QUEUE_LEN 20
+#define COMMAND_SZ 20
+#define QUEUE_END (QUEUE_LEN*COMMAND_SZ)
 
 #include "stepper_pins.hp"
 
@@ -121,7 +123,7 @@ START:
     
 PROC_CMD:
     reset_time
-    LBCO    &command, c3, CMD_OFF, CmdSz
+    LBCO    &command, c3, CMD_OFF, COMMAND_SZ
 	// Check that the CFL_CMD_READY flag has been set; otherwise, busy wait
 	QBBC	PROC_CMD, command.cmd, CFL_CMD_READY
 	// Clear bit and write back to buffer
@@ -130,7 +132,7 @@ PROC_CMD:
     // Let host know that command has been read
     MOV     R31.b0, #PRU0_ARM_INTERRUPT
     // Update CMD_OFF
-    ADD     CMD_OFF, CMD_OFF, CmdSz
+    ADD     CMD_OFF, CMD_OFF, COMMAND_SZ
     QBBC    SKIP_ZERO_OFF, command.cmd, CFL_RST_QUEUE // Check zero queue bit
     LDI     CMD_OFF, 0
 SKIP_ZERO_OFF:

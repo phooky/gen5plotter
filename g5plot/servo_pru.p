@@ -3,11 +3,11 @@
 // SERVO_PRU.P
 //
 
-// servo pulse: 1-2ms out of 20ms
-// ticks per servo cycle: 2e8 * 2e-2 = 4e6
+// servo pulse: 1-2ms out of 10ms
+// ticks per servo cycle: 2e8 * 1e-2 = 2e6
 // ticks per pulse: 2e8 * 1-2e-3 = 2-4e5
 // 256 increments: 2e5 / 256 = 780 (rounded to speed up computation ;)
-#define TICKS_PER_CYCLE 4000000
+#define TICKS_PER_CYCLE 2000000
 #define TICKS_PULSE_MIN 200000
 #define TICKS_PULSE_INC 780
 
@@ -57,6 +57,7 @@ START:
     SBBO    &r0, IO_BASE, DIR_OFF, 4
 
 LOAD_TH_VAL:
+	XOR     TOOL_VAL, TOOL_VAL, TOOL_VAL
     // Load tool setting
     LBCO    &TOOL_VAL.b0, c3, 0, 1
     reset_time

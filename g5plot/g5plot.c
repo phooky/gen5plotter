@@ -243,6 +243,10 @@ int main(int argc, char** argv) {
 	    clearerr(stdin);
 	    continue;
 	}
+	if (cmd == 'Z') {
+	    printf("Now at 0,0\n");
+	    set_here_as_home();
+	}
 	if (cmd == 'Q') {
 	    printf("Explicit shutdown.\n");
 	    not_interrupted = false;
