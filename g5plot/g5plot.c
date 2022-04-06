@@ -38,6 +38,8 @@ uint16_t cmds_processed = 0;
 
 uint8_t* prumem = NULL;
 
+static volatile int not_interrupted = 1;
+
 // Queue management
 uint8_t queue_idx = 0; // next empty queue slot
 const uint8_t queue_len = 20; // total number of Command entries in queue
@@ -56,10 +58,12 @@ void enqueue(Command* cmd) {
         cmd->cmd |= 1 << CFL_RST_QUEUE;
     }
     // wait for empty command space
-    uint16_t attempts = 0;
-    while (prucmd->cmd & (1<<CFL_CMD_READY)) {
+    uint32_t attempts = 0;
+    printf("Full buffer %d",prucmd->cmd & (1<<CFL_CMD_READY));
+    while ((prucmd->cmd & (1<<CFL_CMD_READY)) && not_interrupted) {
 	// pass and busy wait, we should check for timeouts at some point
-	if (attempts == 0xff) { printf("Busy waiting"); }
+	if (attempts == 0xffff) { printf("Busy waiting"); fflush(stdout); }
+	attempts++;
     }
     *prucmd = *cmd;
     // Set ready bit
@@ -200,7 +204,6 @@ void stop() {
 
 #include <signal.h>
 
-static volatile int not_interrupted = 1;
 void handle_sigint(int dummy) {
     not_interrupted = 0;
     printf("Interrupted; shutting down.\n");
@@ -275,7 +278,7 @@ int main(int argc, char** argv) {
     prussdrv_pru_disable(STEPPER_PRU);
     prussdrv_pru_disable(TOOLHEAD_PRU);
     prussdrv_exit ();
-	
+
     return 0;
 }
 
