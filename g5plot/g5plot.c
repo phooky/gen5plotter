@@ -56,8 +56,10 @@ void enqueue(Command* cmd) {
         cmd->cmd |= 1 << CFL_RST_QUEUE;
     }
     // wait for empty command space
+    uint16_t attempts = 0;
     while (prucmd->cmd & (1<<CFL_CMD_READY)) {
 	// pass and busy wait, we should check for timeouts at some point
+	if (attempts == 0xff) { printf("Busy waiting"); }
     }
     *prucmd = *cmd;
     // Set ready bit

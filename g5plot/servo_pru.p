@@ -64,14 +64,9 @@ LOAD_TH_VAL:
     // Set pin
     SBBO    &PIN_MASK, IO_BASE, SET_OFF, 4
     // Compute duty tick increment
-    // 780 = 2^9 + 2^8 + 2^3 + 2^2
-    LSL     DUTY_TICKS, TOOL_VAL, 2
-    LSL     r0, TOOL_VAL, 3
-    ADD     DUTY_TICKS, DUTY_TICKS, r0
-    LSL     r0, TOOL_VAL, 8
-    ADD     DUTY_TICKS, DUTY_TICKS, r0
-    LSL     r0, TOOL_VAL, 9
-    ADD     DUTY_TICKS, DUTY_TICKS, r0
+    // We're just going to estimate, it's silly to add more range
+	// than we need
+	LSL     DUTY_TICKS, TOOL_VAL, 9
     // Add minimum ticks
     ADD     DUTY_TICKS, DUTY_TICKS, MIN_DUTY_TICKS
 
