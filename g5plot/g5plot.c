@@ -49,7 +49,7 @@ bool is_running = false;
 
 void enqueue(Command* cmd) {
     int byteoff = queue_idx * sizeof(Command);
-    Command* prucmd = (Command*)(prumem + byteoff);
+    volatile Command* prucmd = (Command*)(prumem + byteoff);
     // clear reset flag and ready flag on existing command, just in case
     cmd->cmd &= ~((1 << CFL_RST_QUEUE) | (1 << CFL_CMD_READY));
     // zero the queue after this entry if near the end
