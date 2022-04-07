@@ -129,8 +129,6 @@ PROC_CMD:
 	// Clear bit and write back to buffer
 	CLR     command.cmd, CFL_CMD_READY
 	SBCO	&command, c3, CMD_OFF, COMMAND_SZ
-    // Let host know that command has been read
-    //MOV     R31.b0, #PRU0_ARM_INTERRUPT
     // Update CMD_OFF
     ADD     CMD_OFF, CMD_OFF, COMMAND_SZ
     QBBC    SKIP_ZERO_OFF, command.cmd, CFL_RST_QUEUE // Check zero queue bit

@@ -58,12 +58,16 @@ void enqueue(Command* cmd) {
         cmd->cmd |= 1 << CFL_RST_QUEUE;
     }
     // wait for empty command space
-    uint32_t attempts = 0;
-    printf("Full buffer %d",prucmd->cmd & (1<<CFL_CMD_READY));
-    while ((prucmd->cmd & (1<<CFL_CMD_READY)) && not_interrupted) {
-	// pass and busy wait, we should check for timeouts at some point
-	if (attempts == 0xffff) { printf("Busy waiting"); fflush(stdout); }
-	attempts++;
+    printf("Checking for space at queue entry %d (of %d).\n",
+	   queue_idx, queue_len); fflush(stdout);
+    if (prucmd->cmd & (1<<CFL_CMD_READY)) {
+	uint32_t attempts = 0;
+	while ((prucmd->cmd & (1<<CFL_CMD_READY)) && not_interrupted) {
+	    // pass and busy wait, we should check for timeouts at some point
+	    if (attempts == 0xffff) { printf("Busy waiting"); fflush(stdout); }
+	    attempts++;
+	}
+	printf("Block cleared.\n"); fflush(stdout);
     }
     *prucmd = *cmd;
     // Set ready bit
