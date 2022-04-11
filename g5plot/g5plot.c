@@ -25,6 +25,9 @@ typedef struct {
 
 const unsigned int CommandSzInWords = 5;
 
+const unsigned int TH_UP = 30;
+const unsigned int TH_DOWN = 200;
+
 enum {
     CFL_WAIT = 0,        // Tells PRU to wait for an interrupt before continuing.
     CFL_CMD_READY = 1,   // Indicates that this command is ready for processing.
@@ -251,6 +254,14 @@ int main(int argc, char** argv) {
 	if (cmd == EOF) {
 	    clearerr(stdin);
 	    continue;
+	}
+	if (cmd == 'U') {
+	    printf("Pen up\n");
+	    toolhead(TH_UP);
+	}
+	if (cmd == 'D') {
+	    printf("Pen down\n");
+	    toolhead(TH_DOWN);
 	}
 	if (cmd == 'Z') {
 	    printf("Now at 0,0\n");
