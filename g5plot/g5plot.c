@@ -28,8 +28,9 @@ const unsigned int CommandSzInWords = 5;
 const unsigned int TH_UP = 30;
 const unsigned int TH_DOWN = 200;
 
+// Command byte bit definitions
 enum {
-    CFL_WAIT = 0,        // Tells PRU to wait for an interrupt before continuing.
+    CFL_WAIT = 0,        // Deprecated
     CFL_CMD_READY = 1,   // Indicates that this command is ready for processing.
                          // If this bit is not set, the PRU will busy wait until it is.
     CFL_RST_QUEUE = 2,   // Indicates that after this command is executed, the PRU should go
@@ -37,11 +38,14 @@ enum {
     CFL_TOOLHEAD = 3,    // Indicates that this command is for the toolhead.
 };
 
+// A running count of commands processed since g5plot was started.
 uint16_t cmds_processed = 0;
 
+// A pointer to the PRU0's data memory, used for command queue management.
 uint8_t* prumem = NULL;
 
-static volatile int not_interrupted = 1;
+// Flag indicating that g5plot is ready to shut down.
+static volatile bool shutdown = false;
 
 // Queue management
 uint8_t queue_idx = 0; // next empty queue slot
@@ -65,7 +69,7 @@ void enqueue(Command* cmd) {
 	   queue_idx, queue_len); fflush(stdout);
     if (prucmd->cmd & (1<<CFL_CMD_READY)) {
 	uint32_t attempts = 0;
-	while ((prucmd->cmd & (1<<CFL_CMD_READY)) && not_interrupted) {
+	while ((prucmd->cmd & (1<<CFL_CMD_READY)) && !shutdown) {
 	    // pass and busy wait, we should check for timeouts at some point
 	    if (attempts == 0xffff) { printf("Busy waiting"); fflush(stdout); }
 	    attempts++;
@@ -211,9 +215,19 @@ void stop() {
 
 #include <signal.h>
 
-void handle_sigint(int dummy) {
-    not_interrupted = 0;
+// Handle SIGINT by setting the shutdown flag.
+void handle_sigint(int) {
+    shutdown = true;
     printf("Interrupted; shutting down.\n");
+}
+
+
+void handle_sigtstp(int) {
+    prussdrv_pru_pause(0);
+}
+
+void handle_sigcont(int) {
+    prussdrv_pru_unpause(0);
 }
 
 int main(int argc, char** argv) {
@@ -245,11 +259,18 @@ int main(int argc, char** argv) {
     prussdrv_exec_program(TOOLHEAD_PRU, "./servo_pru.bin");
     prussdrv_exec_program(STEPPER_PRU, "./stepper_pru.bin");
 
-    int cmd;
-    struct sigaction sa = { .sa_handler = handle_sigint, .sa_flags = 0 };
-    sigaction(SIGINT, &sa, NULL);
+    {
+	struct sigaction sa_int = { .sa_handler = handle_sigint, .sa_flags = 0 };
+	sigaction(SIGINT, &sa_int, NULL);
+	struct sigaction sa_tstp = { .sa_handler = handle_sigtstp, .sa_flags = 0 };
+	sigaction(SIGTSTP, &sa_tstp, NULL);
+	struct sigaction sa_cont = { .sa_handler = handle_sigcont, .sa_flags = 0 };
+	sigaction(SIGCONT, &sa_cont, NULL);
+    }
 
-    while (not_interrupted) {
+    int cmd;
+
+    while (!shutdown) {
 	cmd = getchar();
 	if (cmd == EOF) {
 	    clearerr(stdin);
@@ -269,7 +290,7 @@ int main(int argc, char** argv) {
 	}
 	if (cmd == 'Q') {
 	    printf("Explicit shutdown.\n");
-	    not_interrupted = false;
+	    shutdown = true;
 	}
         if (cmd == 'M') {
             float x_in, y_in, v_in;
