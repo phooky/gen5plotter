@@ -10,6 +10,29 @@ halt the PRUs and reenable them on continuation.
 
 == Interface
 
+=== g5plot interface
+
+Commands are seperated by newlines. All parameters are floats if not
+otherwise specified.
+
+| command code | parameters | explanation |
+|--------------|------------|-------------|
+| U | - | toolhead up (to preset value) |
+| D | - | toolhead down (to preset value) |
+| M | X Y V | move toolhead. X and Y are in mm, V is in mm/sec. |
+| T | V | move toolhead to velue. Toolhead value is a one-byte unsigned integer. |
+| Z | - | set current position as zero/home. |
+| Q | - | shut down plotter. |
+
+While g5plot can be driven directly from the command line, the
+intended use is to have it receive commands from a fifo, generally
+`/var/run/plotter`.
+
+=== Plotter queue management
+
+* dropping and launching prepared files
+* modules for handling gcode and svg
+* simulator
 
 == Internals
 
