@@ -221,13 +221,18 @@ void handle_sigint(int) {
     printf("Interrupted; shutting down.\n");
 }
 
+static struct sigaction orig_tstp;
 
-void handle_sigtstp(int) {
+void handle_sigtstp(int sig) {
     prussdrv_pru_pause(0);
+    (*orig_tstp.sa_handler)(sig);
 }
 
-void handle_sigcont(int) {
+static struct sigaction orig_cont;
+
+void handle_sigcont(int sig) {
     prussdrv_pru_unpause(0);
+    (*orig_cont.sa_handler)(sig);
 }
 
 int main(int argc, char** argv) {
@@ -263,9 +268,9 @@ int main(int argc, char** argv) {
 	struct sigaction sa_int = { .sa_handler = handle_sigint, .sa_flags = 0 };
 	sigaction(SIGINT, &sa_int, NULL);
 	struct sigaction sa_tstp = { .sa_handler = handle_sigtstp, .sa_flags = 0 };
-	sigaction(SIGTSTP, &sa_tstp, NULL);
+	sigaction(SIGTSTP, &sa_tstp, &orig_tstp);
 	struct sigaction sa_cont = { .sa_handler = handle_sigcont, .sa_flags = 0 };
-	sigaction(SIGCONT, &sa_cont, NULL);
+	sigaction(SIGCONT, &sa_cont, &orig_cont);
     }
 
     int cmd;
