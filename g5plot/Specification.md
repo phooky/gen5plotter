@@ -23,6 +23,7 @@ otherwise specified.
 | T | V | move toolhead to velue. Toolhead value is a one-byte unsigned integer. |
 | Z | - | set current position as zero/home. |
 | Q | - | shut down plotter. |
+| W | - | wait for user intervention (NOT YET IMPLEMENTED) |
 
 While g5plot can be driven directly from the command line, the
 intended use is to have it receive commands from a fifo, generally
