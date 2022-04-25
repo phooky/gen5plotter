@@ -216,7 +216,7 @@ void stop() {
 #include <signal.h>
 
 // Handle SIGINT by setting the shutdown flag.
-void handle_sigint(int) {
+void handle_sigint(int sig) {
     shutdown = true;
     printf("Interrupted; shutting down.\n");
 }
