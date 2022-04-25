@@ -98,7 +98,7 @@ AB xy_to_ab(int32_t x, int32_t y) {
 void move_rel_xy_time(int32_t x_delta, int32_t y_delta, uint32_t ticks) {
     Command cmd;
     cmd.end_tick = ticks;
-    cmd.enable = 0x4;
+    cmd.enable = 0x0;
     cmd.direction = 0x1;
     AB ab = xy_to_ab(x_delta,y_delta);
     int32_t a = ab.a; int32_t b = ab.b;
