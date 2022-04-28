@@ -98,7 +98,7 @@ AB xy_to_ab(int32_t x, int32_t y) {
 void move_rel_xy_time(int32_t x_delta, int32_t y_delta, uint32_t ticks) {
     Command cmd;
     cmd.end_tick = ticks;
-    cmd.enable = 0x0;
+    cmd.enable = 0x4;
     cmd.direction = 0x1;
     AB ab = xy_to_ab(x_delta,y_delta);
     int32_t a = ab.a; int32_t b = ab.b;
@@ -135,6 +135,8 @@ const float steps_per_mm_z = 400.0;
 // Internal PRU ticks per second (200 MHz)
 const float ticks_per_second = 200 * 1000 * 1000;
 
+// Toolhead ticks: needs 0.2s
+const uint32_t TH_TICKS = 40L * 1000L * 1000L;
 
 /**
  * Move in XY coordinates relative to the current position.
@@ -184,7 +186,7 @@ void toolhead(int parameter) {
     Command cmd;
     cmd.cmd = 1 << CFL_TOOLHEAD;
     cmd.toolhead = parameter & 0xff;
-    cmd.end_tick = 500;
+    cmd.end_tick = TH_TICKS;
     cmd.enable = 0x4;
     cmd.direction = 0x1;
     cmd.z_period = 0x7fffffff;

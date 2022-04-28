@@ -5,12 +5,15 @@ import sys
 v=150
 r = 2
 max_r = 40
-factor = 0.2
+factor = 0.35
 theta = 0
 
 if len(sys.argv) > 1:
     max_r = float(sys.argv[1])
 
+print("U")
+print("M0 0 100")
+print("D")
 # estimated seg length = theta_d * r
 # we want to keep seglens to about 1.5
 while r < max_r:
@@ -23,3 +26,4 @@ while r < max_r:
 
 print("M0 0 150")
 
+print("U")
