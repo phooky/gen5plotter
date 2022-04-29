@@ -28,8 +28,9 @@ const unsigned int CommandSzInWords = 5;
 const unsigned int TH_UP = 30;
 const unsigned int TH_DOWN = 200;
 
+// Command byte bit definitions
 enum {
-    CFL_WAIT = 0,        // Tells PRU to wait for an interrupt before continuing.
+    CFL_WAIT = 0,        // Deprecated
     CFL_CMD_READY = 1,   // Indicates that this command is ready for processing.
                          // If this bit is not set, the PRU will busy wait until it is.
     CFL_RST_QUEUE = 2,   // Indicates that after this command is executed, the PRU should go
@@ -37,11 +38,14 @@ enum {
     CFL_TOOLHEAD = 3,    // Indicates that this command is for the toolhead.
 };
 
+// A running count of commands processed since g5plot was started.
 uint16_t cmds_processed = 0;
 
+// A pointer to the PRU0's data memory, used for command queue management.
 uint8_t* prumem = NULL;
 
-static volatile int not_interrupted = 1;
+// Flag indicating that g5plot is ready to shut down.
+static volatile bool shutdown = false;
 
 // Queue management
 uint8_t queue_idx = 0; // next empty queue slot
@@ -65,7 +69,7 @@ void enqueue(Command* cmd) {
 	   queue_idx, queue_len); fflush(stdout);
     if (prucmd->cmd & (1<<CFL_CMD_READY)) {
 	uint32_t attempts = 0;
-	while ((prucmd->cmd & (1<<CFL_CMD_READY)) && not_interrupted) {
+	while ((prucmd->cmd & (1<<CFL_CMD_READY)) && !shutdown) {
 	    // pass and busy wait, we should check for timeouts at some point
 	    if (attempts == 0xffff) { printf("Busy waiting"); fflush(stdout); }
 	    attempts++;
@@ -131,6 +135,8 @@ const float steps_per_mm_z = 400.0;
 // Internal PRU ticks per second (200 MHz)
 const float ticks_per_second = 200 * 1000 * 1000;
 
+// Toolhead ticks: needs 0.2s
+const uint32_t TH_TICKS = 40L * 1000L * 1000L;
 
 /**
  * Move in XY coordinates relative to the current position.
@@ -180,7 +186,7 @@ void toolhead(int parameter) {
     Command cmd;
     cmd.cmd = 1 << CFL_TOOLHEAD;
     cmd.toolhead = parameter & 0xff;
-    cmd.end_tick = 500;
+    cmd.end_tick = TH_TICKS;
     cmd.enable = 0x4;
     cmd.direction = 0x1;
     cmd.z_period = 0x7fffffff;
@@ -211,9 +217,24 @@ void stop() {
 
 #include <signal.h>
 
-void handle_sigint(int dummy) {
-    not_interrupted = 0;
+// Handle SIGINT by setting the shutdown flag.
+void handle_sigint(int sig) {
+    shutdown = true;
     printf("Interrupted; shutting down.\n");
+}
+
+static struct sigaction orig_tstp;
+
+void handle_sigtstp(int sig) {
+    prussdrv_pru_pause(0);
+    (*orig_tstp.sa_handler)(sig);
+}
+
+static struct sigaction orig_cont;
+
+void handle_sigcont(int sig) {
+    prussdrv_pru_unpause(0);
+    (*orig_cont.sa_handler)(sig);
 }
 
 int main(int argc, char** argv) {
@@ -245,11 +266,18 @@ int main(int argc, char** argv) {
     prussdrv_exec_program(TOOLHEAD_PRU, "./servo_pru.bin");
     prussdrv_exec_program(STEPPER_PRU, "./stepper_pru.bin");
 
-    int cmd;
-    struct sigaction sa = { .sa_handler = handle_sigint, .sa_flags = 0 };
-    sigaction(SIGINT, &sa, NULL);
+    {
+	struct sigaction sa_int = { .sa_handler = handle_sigint, .sa_flags = 0 };
+	sigaction(SIGINT, &sa_int, NULL);
+	struct sigaction sa_tstp = { .sa_handler = handle_sigtstp, .sa_flags = 0 };
+	sigaction(SIGTSTP, &sa_tstp, &orig_tstp);
+	struct sigaction sa_cont = { .sa_handler = handle_sigcont, .sa_flags = 0 };
+	sigaction(SIGCONT, &sa_cont, &orig_cont);
+    }
 
-    while (not_interrupted) {
+    int cmd;
+
+    while (!shutdown) {
 	cmd = getchar();
 	if (cmd == EOF) {
 	    clearerr(stdin);
@@ -269,7 +297,7 @@ int main(int argc, char** argv) {
 	}
 	if (cmd == 'Q') {
 	    printf("Explicit shutdown.\n");
-	    not_interrupted = false;
+	    shutdown = true;
 	}
         if (cmd == 'M') {
             float x_in, y_in, v_in;

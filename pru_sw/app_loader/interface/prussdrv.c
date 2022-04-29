@@ -333,6 +333,29 @@ int prussdrv_pru_disable(unsigned int prunum)
 
 }
 
+volatile uint32_t* pru_control_regs(unsigned int prunum) {
+    if (prunum == 0)
+        return (volatile uint32_t *) prussdrv.pru0_control_base;
+    else if (prunum == 1)
+        return (volatile uint32_t *) prussdrv.pru1_control_base;
+    else
+        return NULL;
+}
+
+int prussdrv_pru_pause(unsigned int prunum) {
+    volatile uint32_t* cregs = pru_control_regs(prunum);
+    if (cregs == NULL) return -1;
+    *cregs &= ~(1 << 1); // turn off enabled bit
+    return 0;
+}
+
+int prussdrv_pru_unpause(unsigned int prunum) {
+    volatile uint32_t* cregs = pru_control_regs(prunum);
+    if (cregs == NULL) return -1;
+    *cregs |= (1 << 1); // turn on enabled bit
+    return 0;
+}
+
 int prussdrv_pru_write_memory(unsigned int pru_ram_id,
                               unsigned int wordoffset,
                               const unsigned int *memarea,

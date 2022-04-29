@@ -125,6 +125,11 @@ extern "C" {
     int prussdrv_pru_enable(unsigned int prunum);
     int prussdrv_pru_enable_at(unsigned int prunum, size_t addr);
 
+    // Disable the PRU without resetting the instruction pointer
+    int prussdrv_pru_pause(unsigned int prunum);
+    // Reenable the PRU without resetting the instruction pointer
+    int prussdrv_pru_unpause(unsigned int prunum);
+
     int prussdrv_pru_write_memory(unsigned int pru_ram_id,
                                   unsigned int wordoffset,
                                   const unsigned int *memarea,
