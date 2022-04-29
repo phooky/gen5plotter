@@ -13,13 +13,15 @@ label "USB2TTL" and therevwill be an arrow pointing to Pin 1.  This is a 3.3V le
 
 2. Open up your serial port in `tio`, `minicom`, or some other simple console. Be sure to set your baud rate to 115200. Next, turn on the PSU and push the "PowerOn" button on the birdwing board. After a few moments, you should see boot messages scrolling by. Eventually you will see a login prompt. Log in as "root"; no password should be necessary.
 
-3. [TODO] connect ethernet
+3. Remount the root partition as read/write: `mount -o remount,rw /`
 
-4. [TODO] set up wifi
+4. Change the hostname. For convenience, I've named mine 'gen5'. If you use something else you'll need to edit the hostname in the Makefile if you want the 'deploy' and other remote targets to work. You can change the hostname by editing the `/etc/hostname` file and rebooting (or in theory running the 'hostname' utility).
+
+5. Plug in the wired ethernet, or set up the wifi. I'm not going to document the wifi configuration here, but you can probably set it up with the 'nmcli' utility.
 
 5. Add your public key to the /var/ssh/authorized_keys file. Run "/etc/init.d/S50sshd restart".
 
-6. [TODO] stop kaiten (it will get in the way)
+6. Stop the 'kaiten' process. Remove the 'kaiten' from the /etc/init.d directory (or better yet move it somewhere safe) to stop it from launching on boot. Reboot.
 
 ## Building and installing g5plot
 
@@ -27,16 +29,19 @@ label "USB2TTL" and therevwill be an arrow pointing to Pin 1.  This is a 3.3V le
 
 2. Build PASM and the app loader libraries with the "build_tools.sh" script.
 
-3. cd g5plot && make
+3. #`(cd g5plot && make)`
 
 ## Deploying and running
 
-TODO
+You can deploy g5plot by running `make deploy` from the g5plot directory. It relies on the hostname being `gen5`; you can either change the default in the Makefile or set the `PLOTTER` environment variable to the plotter's name.
+
+By default g5plot is deployed to `/var/scratch/g5plot`. If you want to deploy it outside of the `/var` tree you'll need to remount the root partition as read/write.
+
+You can use the `g5p_start.sh` and `g5p_stop.sh` scripts to start and stop the plotter process. Commands should be piped to `/var/run/plotter`.
 
 ## TODOs
 
-* Where is the speaker?
-* document the servo hookup
+* Start using the speaker for alerts
 
 ## Pinouts
 
@@ -52,3 +57,7 @@ To connect to the birdwing board you will need to wire up GND, TX, and RX only. 
 |  4  | TX       |
 |  5  | RX       |
 |  6  | RTS (ignore) |
+
+### Servo hookup
+
+TODO
