@@ -1,0 +1,13 @@
+[gwrite]
+default_profile = "gen5plotter"
+
+[gwrite.gen5plotter]
+unit="mm"
+document_start="U\n"
+layer_start=""
+layer_end=""
+layer_join=""
+line_start=""
+line_end="U\n"
+segment_first="M{x:.3f} {y:.3f} 150\nD\n"
+segment="M{x:.3f} {y:.3f} 100\n"
