@@ -20,6 +20,7 @@ otherwise specified.
 | U | - | toolhead up (to preset value) |
 | D | - | toolhead down (to preset value) |
 | M | X Y V | move toolhead. X and Y are in mm, V is in mm/sec. |
+| R | X Y V | move toolhead relative to last position. X and Y are in mm, V is in mm/sec. |
 | T | V | move toolhead to velue. Toolhead value is a one-byte unsigned integer. |
 | Z | - | set current position as zero/home. |
 | Q | - | shut down plotter. |
