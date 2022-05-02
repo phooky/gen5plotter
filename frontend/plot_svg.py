@@ -20,15 +20,15 @@ def do_pendown(draw = True):
         is_pen_down = draw
 
 def consume_wsp(d_iter):
-    while d_iter.peek().isspace():
+    while d_iter.peek('').isspace():
         next(d_iter)
 
 def consume_wsp_comma(d_iter):
-    while d_iter.peek().isspace() or d_iter.peek() == ',':
+    while d_iter.peek('').isspace() or d_iter.peek('') == ',':
         next(d_iter)
 
 def read_float(d_iter):
-    check = d_iter.peek()
+    check = d_iter.peek('')
     if not (check.isdigit() or check == '-'):
         return None
     if check == '-':
@@ -93,12 +93,13 @@ class FormatError(Exception):
 def path_d_to_plot(d_iter):
     'Generates a set of plotter commands from an iterator over a path "d" code.'
     d_iter = peekable(d_iter)
-    while True:
-        consume_wsp(d_iter)
-        code = next(d_iter)
-        if not code.isalpha():
-            raise FormatError
-        yield from handle_code[code.upper()](d_iter,code.isupper())
+    while d_iter:
+            consume_wsp(d_iter)
+            code = next(d_iter)
+            if not code.isalpha():
+                raise FormatError
+            yield from handle_code[code.upper()](d_iter,code.isupper())
+
 
 
 for l in path_d_to_plot(iter('M1,2 3 4 5, 6 7 ,8L 9 10M200 200l20 20')):
