@@ -83,7 +83,59 @@ void enqueue(Command* cmd) {
     queue_idx = zero_queue?0:queue_idx+1;
 }
 
+
+/*
+ * Machine configuration
+ */
+const float steps_per_mm = 100.0;
+// Maximum X coordinate in millimeters
+const float max_x = 252.0;
+// Maximum Y coordinate in millimeters
+const float max_y = 199.0;
+// Maximum velocity in mm/s
+const float max_v = 150.0;
+// Steps per mm, XY
+const float steps_per_mm_xy = 88.573186;
+// Steps per mm, Z
+const float steps_per_mm_z = 400.0;
+// Internal PRU ticks per second (200 MHz)
+const float ticks_per_second = 200 * 1000 * 1000;
+
+// Toolhead ticks: needs 0.2s
+const uint32_t TH_TICKS = 40L * 1000L * 1000L;
+
+
+/*
+ * Machine state
+ */
+// The _machine_ state is maintained as the current position in A and B
+// steps. The XY coordinates are always a cache of the XY interpretation
+// of the A and B steps.
 typedef struct { int32_t a; int32_t b; } AB;
+typedef struct { float_t x; float_t y; } XY;
+struct {
+    AB ab;    // Absolute stepper positions
+    XY xy;    // xy coordinates based on ab coordinates
+} state = { { 0, 0 }, { 0.0, 0.0 } };
+
+/** Convert XY position or delta to AB position or delta */
+AB ab_from_xy(XY xy) {
+    int32_t steps_x = (int32_t)(xy.x * steps_per_mm_xy);
+    int32_t steps_y = (int32_t)(xy.y * steps_per_mm_xy);
+    AB r = { steps_y + steps_x, steps_y - steps_x };
+    return r;
+}
+
+/** Convert AB position or delta to XY position or delta */
+XY xy_from_ab(AB ab) {
+    int32_t steps_x = (ab.a - ab.b) / 2;
+    int32_t steps_y = (ab.a + ab.b) / 2;
+    XY r = { (float)steps_x / steps_per_mm_xy, (float)steps_y / steps_per_mm_xy };
+    return r;
+}
+
+float current_x =0.0, current_y =0.0;
+
 /*
  * Convert X/Y coordinates, in steps, to A/B hbot coordinates
  */
@@ -112,31 +164,6 @@ void move_rel_xy_time(int32_t x_delta, int32_t y_delta, uint32_t ticks) {
     //printf("X_P %d Y_P %d\n",cmd.x_period, cmd.y_period);
     enqueue(&cmd);
 }
-
-/*
- * Machine state
- */
-float current_x =0.0, current_y =0.0;
-
-/*
- * Machine configuration
- */
-const float steps_per_mm = 100.0;
-// Maximum X coordinate in millimeters
-const float max_x = 252.0;
-// Maximum Y coordinate in millimeters
-const float max_y = 199.0;
-// Maximum velocity in mm/s
-const float max_v = 150.0;
-// Steps per mm, XY
-const float steps_per_mm_xy = 88.573186;
-// Steps per mm, Z
-const float steps_per_mm_z = 400.0;
-// Internal PRU ticks per second (200 MHz)
-const float ticks_per_second = 200 * 1000 * 1000;
-
-// Toolhead ticks: needs 0.2s
-const uint32_t TH_TICKS = 40L * 1000L * 1000L;
 
 /**
  * Move in XY coordinates relative to the current position.
