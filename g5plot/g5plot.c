@@ -305,13 +305,15 @@ int main(int argc, char** argv) {
                 move_xy(x_in,y_in,v_in);
                 printf("Move to X %f Y %f - V %f\n",x_in,y_in,v_in);
             }
+	}
         if (cmd == 'R') {
             float x_in, y_in, v_in;
             if (scanf("%f %f %f\n",&x_in,&y_in,&v_in) != EOF) {
                 move_relative_xy(x_in,y_in,v_in);
                 printf("Move relative X %f Y %f - V %f\n",x_in,y_in,v_in);
             }
-        } else if (cmd == 'T') {
+	}
+        if (cmd == 'T') {
             int th;
             if (scanf("%d\n",&th) != EOF) {
                 toolhead(th);
@@ -319,6 +321,7 @@ int main(int argc, char** argv) {
             }
         }
     }
+
     printf("Out of main loop.\n");
 
     printf("SUMMARY: oustanding events %d, processed events %d, queue offset %d\n",
