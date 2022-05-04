@@ -122,37 +122,24 @@ struct {
 AB ab_from_xy(XY xy) {
     int32_t steps_x = (int32_t)(xy.x * steps_per_mm_xy);
     int32_t steps_y = (int32_t)(xy.y * steps_per_mm_xy);
-    AB r = { steps_y + steps_x, steps_y - steps_x };
-    return r;
+    return (AB){ steps_y + steps_x, steps_y - steps_x };
 }
 
 /** Convert AB position or delta to XY position or delta */
 XY xy_from_ab(AB ab) {
     int32_t steps_x = (ab.a - ab.b) / 2;
     int32_t steps_y = (ab.a + ab.b) / 2;
-    XY r = { (float)steps_x / steps_per_mm_xy, (float)steps_y / steps_per_mm_xy };
-    return r;
-}
-
-float current_x =0.0, current_y =0.0;
-
-/*
- * Convert X/Y coordinates, in steps, to A/B hbot coordinates
- */
-AB xy_to_ab(int32_t x, int32_t y) {
-    AB r = { .a = y+x, .b = y-x };
-    return r;
+    return (XY){ (float)steps_x / steps_per_mm_xy, (float)steps_y / steps_per_mm_xy };
 }
 
 /*
- * Enqueue a relative X/Y move, in steps and timer ticks
+ * Enqueue a relative AB move, in steps and timer ticks
  */
-void move_rel_xy_time(int32_t x_delta, int32_t y_delta, uint32_t ticks) {
+void move_rel_ab_time(AB ab, uint32_t ticks) {
     Command cmd;
     cmd.end_tick = ticks;
     cmd.enable = 0x4;
     cmd.direction = 0x1;
-    AB ab = xy_to_ab(x_delta,y_delta);
     int32_t a = ab.a; int32_t b = ab.b;
     if (a < 0) { cmd.direction ^= 0x1; a = -a; }
     if (b < 0) { cmd.direction ^= 0x2; b = -b; }
@@ -163,6 +150,10 @@ void move_rel_xy_time(int32_t x_delta, int32_t y_delta, uint32_t ticks) {
     cmd.y_period = (b==0)?0x7fffffff:(ticks / (b * 2));
     //printf("X_P %d Y_P %d\n",cmd.x_period, cmd.y_period);
     enqueue(&cmd);
+    // Update the current machine state
+    state.ab.a += ab.a;
+    state.ab.b += ab.b;
+    state.xy = xy_from_ab(state.ab);
 }
 
 /**
@@ -178,13 +169,10 @@ void move_relative_xy(float dx, float dy, float v) {
         fprintf(stderr, "Refusing to move at less that 0.1mm/s\n");
         return;
     }
-    int32_t steps_x = (int32_t)(dx * steps_per_mm_xy);
-    int32_t steps_y = (int32_t)(dy * steps_per_mm_xy);
+    AB delta = ab_from_xy( (XY){ dx, dy } );
     float len = sqrt(dx*dx + dy*dy);
     uint32_t time_in_ticks = (uint32_t)(ticks_per_second * (len / v));
-    move_rel_xy_time(steps_x,steps_y,time_in_ticks);
-    current_x += dx;
-    current_y += dy;
+    move_rel_ab_time(delta,time_in_ticks);
 }
 
 /**
@@ -194,8 +182,8 @@ void move_relative_xy(float dx, float dy, float v) {
  * @param v the velocity of the move, in millimeters per second (mm/s).
  */
 void move_xy(float x, float y, float v) {
-    float dx = x - current_x;
-    float dy = y - current_y;
+    float dx = x - state.xy.x;
+    float dy = y - state.xy.y;
     move_relative_xy(dx, dy, v);
 }
 
@@ -206,7 +194,7 @@ void move_xy(float x, float y, float v) {
  */
 void dwell(float time) {
     uint32_t time_in_ticks = (uint32_t)(ticks_per_second * time);
-    move_rel_xy_time(0,0,time_in_ticks);
+    move_rel_ab_time((AB){0,0},time_in_ticks);
 }
 
 void toolhead(int parameter) {
@@ -227,8 +215,8 @@ void toolhead(int parameter) {
  * Set bot's idea of home (0,0).
  */
 void set_here_as_home() {
-    current_x = 0.0;
-    current_y = 0.0;
+    state.ab = (AB){ 0, 0 };
+    state.xy = (XY){ 0.0, 0.0 };
 }
 
 /**
