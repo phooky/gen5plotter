@@ -104,6 +104,9 @@ const float ticks_per_second = 200 * 1000 * 1000;
 // Toolhead ticks: needs 0.2s
 const uint32_t TH_TICKS = 40L * 1000L * 1000L;
 
+// Homing ticks: needs 5s
+const uint32_t HOMING_TICKS = 1000L * 1000L * 1000L;
+
 
 /*
  * Machine state
@@ -154,6 +157,35 @@ void move_rel_ab_time(AB ab, uint32_t ticks) {
     state.ab.a += ab.a;
     state.ab.b += ab.b;
     state.xy = xy_from_ab(state.ab);
+}
+
+/*
+ * Home toolhead. This involves just spinning the A axis and disabling the B
+ * axis.
+ */
+void home_toolhead() {
+    Command cmd;
+    cmd.end_tick = HOMING_TICKS;
+    cmd.enable = 0x6;
+    cmd.direction = 0x0;
+    cmd.cmd = 0x00;
+    cmd.y_period = cmd.z_period = 0x7fffffff;
+    cmd.x_period = HOMING_TICKS / (max_x * steps_per_mm_xy * 2);
+    enqueue(&cmd);
+}
+
+
+/*
+ * Disable steppers.
+ */
+void disable_steppers() {
+    Command cmd;
+    cmd.end_tick = TH_TICKS;
+    cmd.enable = 0x7;
+    cmd.direction = 0x0;
+    cmd.cmd = 0x00;
+    cmd.x_period = cmd.y_period = cmd.z_period = 0x7fffffff;
+    enqueue(&cmd);
 }
 
 /**
@@ -305,6 +337,14 @@ int main(int argc, char** argv) {
 	if (cmd == 'D') {
 	    printf("Pen down\n");
 	    toolhead(TH_DOWN);
+	}
+	if (cmd == 'H') {
+	    printf("Homing.\n");
+	    home_toolhead();
+	}
+	if (cmd == 'O') {
+	    printf("Steppers off.\n");
+	    disable_steppers();
 	}
 	if (cmd == 'Z') {
 	    printf("Now at 0,0\n");

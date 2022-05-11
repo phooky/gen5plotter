@@ -23,6 +23,8 @@ otherwise specified.
 | R | X Y V | move toolhead relative to last position. X and Y are in mm, V is in mm/sec. |
 | T | V | move toolhead to velue. Toolhead value is a one-byte unsigned integer. |
 | Z | - | set current position as zero/home. |
+| O | - | all steppers off |
+| H | - | home toolhead to 0,0. |
 | Q | - | shut down plotter. |
 | W | - | wait for user intervention (NOT YET IMPLEMENTED) |
 

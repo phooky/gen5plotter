@@ -149,8 +149,8 @@ SKIP_TOOLHEAD:
     LSR     zaxis.next_tick, zaxis.period, 1
     MOV     END_TICK, command.end_tick
     // set direction and enable flags
-    MOV     r1.w0, (DIR_EN_MASK) & 0xffff
-    MOV     r1.w2, (DIR_EN_MASK) >> 16
+    LDI     r1.w0, (DIR_EN_MASK) & 0xffff
+    LDI     r1.w2, (DIR_EN_MASK) >> 16
     AND     r1, r30, r1
     copy_bit command.direction, 0, r1, X_DIR
     copy_bit command.direction, 1, r1, Y_DIR
