@@ -70,11 +70,14 @@ module rail_approximate(rail_length = 100) {
 
 module m2_hex_nut_hole(depth=10) {
     // located from the center of the nut, bottom face
+    $fn=40;
     intersection_for(theta = [0, 60, 120]) {
 	rotate([0,0,theta])
 	    translate([0,0,depth/2])
 	    cube([m2_hex_width_clearance,100,depth],center=true);
     }
+    translate([0,0,-20])
+	cylinder(d=m2_bolt_thread_clearance_dia,h=40);
 }
 
 module rail_support(rail_length = 100) {
@@ -100,10 +103,51 @@ module rail_support(rail_length = 100) {
 
 //m2_hex_nut_hole();
 translate([0,0,rail_support_height]) {
-    color("green") rail_holes(mocks=true);	
-    rail_approximate();
+    // #color("green") rail_holes(mocks=true);	
+    // #rail_approximate();
 }
 rail_support();
-support(2.5);
-translate([20,40,-10])
-rotate([0,0,90]) sg90();
+support(4);
+
+// *** copied from sg90.scad, ugh "use" vs "import" ***
+m_body_width = 23;
+m_body_wing_height = 2.5;
+m_body_depth = 12.5;
+
+// ----- mounting holes ----
+sg90_mounting_hole_dia = 2.5; // mm
+sg90_mounting_hole_d_from_body = 2.65; // mm
+sg90_mounting_hole_separation = m_body_width + sg90_mounting_hole_d_from_body * 2;
+
+module sg90_support() {
+    mount_th = 5;
+    mount_w = (sg90_mounting_hole_d_from_body*2) - 0.1;
+    mount_d = m_body_depth;
+    module one_mount() {
+	// located with origin at the top of the mounting hole
+	difference() {
+	    translate([0,0,-mount_th/2])
+		cube([mount_w,mount_d,mount_th], center=true);
+	    translate([0,0,-mount_th + m2_hex_nut_depth])
+		rotate([180,0,0]) m2_hex_nut_hole();
+	}
+    }
+    one_mount();
+    translate([sg90_mounting_hole_separation,0,0]) one_mount();
+}
+
+sg90_support_height = 10 - m_body_wing_height;
+translate([18,30,sg90_support_height]) {
+    rotate([0,0,90]) {
+	//# sg90_mount_origin();
+	sg90_support();
+    }
+}
+// bridge. this is hacky but whatevs, i'm busy
+color("orange")
+hull() {
+    translate([18-m_body_depth/2,27.3,sg90_support_height-5])
+	cube([0.05,5.6+sg90_mounting_hole_separation,5]);
+    translate([rail_width/2,28,rail_height-5])
+	cube([0.05,4+sg90_mounting_hole_separation,5]);
+}

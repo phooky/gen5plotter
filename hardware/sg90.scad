@@ -7,30 +7,46 @@ $fn=50;
 fuse = 0.0001;
 
 // measurements
-    m_body_width = 22.6;
-    m_body_height = 22.1;
-    m_body_base_to_wingtop = 18.0;
-    m_body_wing_height = 2.5;
-    m_body_wingtip_to_wingtip = 32.1;
-    m_body_depth = 12.3;
-    m_cord_depth = 4;
-    m_cord_height = 3;
-    m_cord_zloc = 5.6;
-    
-    m_boss_height = 5;
-    m_boss_diameter = 11.6;
-    
-    m_horn_top = 31.4;
-    m_horn_base_diameter = 7.1;
-    m_horn_end_diameter = 3.5;
-    m_horn_length = 32;
-    m_horn_th = 1.3;
+m_body_width = 23;
+m_body_height = 22.1;
+m_body_base_to_wingtop = 18.0;
+m_body_wing_height = 2.5;
+m_body_wingtip_to_wingtip = 32.1;
+m_body_depth = 12.5;
+m_cord_depth = 4;
+m_cord_height = 3;
+m_cord_zloc = 5.6;
+
+m_boss_height = 5;
+m_boss_diameter = 11.6;
+
+m_horn_top = 31.4;
+m_horn_base_diameter = 7.1;
+m_horn_end_diameter = 3.5;
+m_horn_length = 32;
+m_horn_th = 1.3;
+
+// ----- mounting holes ----
+sg90_mounting_hole_dia = 2.5; // mm
+sg90_mounting_hole_d_from_body = 2.65; // mm
+sg90_mounting_hole_separation = m_body_width + sg90_mounting_hole_d_from_body * 2;
+
+// The following are approximate, at best!
 
 module sg90(horn_angle=0, cord_length=6) {
     body();
     cord(length = cord_length);
     boss();
     horn(angle=horn_angle);
+}
+
+// sg90 with the underside of the mounting hole farthest from the servo horn
+// at the origin
+module sg90_mount_origin() {
+    translate([m_body_width/2 + sg90_mounting_hole_d_from_body,
+	       0,
+	       -m_body_base_to_wingtop + m_body_wing_height])
+    sg90();
 }
 
 module horn(angle = 0) {
@@ -80,5 +96,5 @@ module boss() {
     }        
 }   
 
-sg90();
+sg90_mount_origin();
 
